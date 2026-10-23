@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -25,6 +25,12 @@ extension MouseEventHandler {
             return false
         case .dragging:
             drag.receivedFrameChange = true
+            if drag.dwindleResizeWorkspaceId != nil
+                || (controller?.settings.gestures.adoptNativeResize == true
+                    && controller?.workspaceManager.activeLayoutKind(for: entry.workspaceId) == .dwindle)
+            {
+                updateNativeDwindleResize(&drag, entry: entry, observedFrame: nativeWindowFrameProvider(entry.axRef))
+            }
             state.nativeTitleBarDrag = drag
             return true
         case .awaitingFrameChange:
@@ -109,6 +115,10 @@ extension MouseEventHandler {
             controller?.axManager.invalidateAppliedFrame(for: entry.windowId)
             return true
         }
+        if adoptNativeResizeIfEligible(&drag, entry: entry, observedFrame: observedFrame) {
+            state.nativeTitleBarDrag = drag
+            return true
+        }
         drag.issuedUnreadableCorrection = observedFrame == nil
         drag.phase = .awaitingCorrection
         drag.receivedFrameChange = false
@@ -153,9 +163,9 @@ extension MouseEventHandler {
         ) == true
     }
 
-    private func terminalNativeWindowFrame(for entry: WindowState) -> CGRect? {
+    func terminalNativeWindowFrame(for entry: WindowState) -> CGRect? {
         nativeWindowFrameProvider(entry.axRef)
-            ?? (try? AXWindowService.frame(entry.axRef))
+            ?? nativeWindowFrameFallbackProvider(entry.axRef)
     }
 
     func handleNativeTitleBarDragFrameApplySucceeded(_ result: AXFrameApplyResult) {
@@ -207,6 +217,7 @@ extension MouseEventHandler {
         }
         drag.phase = .awaitingFrameChange
         drag.receivedFrameChange = retainUnreadableFrameChange
+        drag.adoptionStartFrame = nil
         state.nativeTitleBarDrag = drag
     }
 

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 @testable import OmniWM
@@ -87,7 +87,7 @@ final class MetricsQueryContractTests: XCTestCase {
         let object = try XCTUnwrap(
             JSONSerialization.jsonObject(with: encoded) as? [String: Any]
         )
-        XCTAssertEqual(object["version"] as? Int, 20)
+        XCTAssertEqual(object["version"] as? Int, 22)
         let resultObject = try XCTUnwrap(object["result"] as? [String: Any])
         XCTAssertEqual(resultObject["kind"] as? String, "metrics")
 

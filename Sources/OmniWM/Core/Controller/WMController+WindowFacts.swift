@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -30,8 +30,19 @@ extension WMController {
         if pid == ProcessInfo.processInfo.processIdentifier || isOwnedWindow(windowNumber: axRef.windowId) {
             return Self.ownedWindowDispositionEvaluation(token: token)
         }
-        let baseFacts = collectDispositionRuleFacts(for: token, axRef: axRef, admissionGeometry: admissionGeometry)
-        let fullscreen = appFullscreen ?? AXWindowService.isFullscreen(axRef)
+        if let evaluation = windowDispositionEvaluationForTests?(token) {
+            return evaluation
+        }
+        let collected = collectDispositionRuleFacts(for: token, axRef: axRef, admissionGeometry: admissionGeometry)
+        let baseFacts = collected.facts
+        let fullscreen = appFullscreen ?? collected.fullscreenAttribute.map {
+            AXWindowService.isFullscreen(
+                axRef,
+                subrole: baseFacts.ax.subrole,
+                fullscreenAttribute: $0,
+                fullscreenAttributeWasRead: true
+            )
+        } ?? AXWindowService.isFullscreen(axRef)
         let lookupAttempted = windowServerLookupAttempted || windowInfo != nil
         var resolvedWindowInfo = Self.exactWindowServerInfo(windowInfo, for: token)
 
@@ -160,6 +171,7 @@ extension WMController {
                 workspaceName: nil,
                 ruleEffects: .none,
                 admissionHints: .none,
+                ruleProvenance: .none,
                 heuristicReasons: [],
                 deferredReason: nil
             ),
@@ -173,7 +185,7 @@ extension WMController {
         for token: WindowToken,
         axRef: AXWindowRef,
         admissionGeometry: WindowAdmissionGeometryEvidence?
-    ) -> WindowRuleFacts {
+    ) -> (facts: WindowRuleFacts, fullscreenAttribute: Bool??) {
         let pid = token.pid
         let sizeConstraints = evaluateSizeConstraints(
             for: token,
@@ -181,19 +193,23 @@ extension WMController {
             admissionGeometry: admissionGeometry
         )
         let appInfo = resolvedAppInfo(for: pid)
-        return WindowRuleFacts(
-            appName: appInfo?.name,
-            ax: AXWindowService.collectWindowFacts(
-                axRef,
-                appPolicy: appInfo?.activationPolicy,
-                bundleId: appInfo?.bundleId,
-                includeTitle: windowRuleEngine.requiresTitle(
-                    for: appInfo?.bundleId,
-                    appName: appInfo?.name
-                )
+        let collected = AXWindowService.collectWindowFacts(
+            axRef,
+            appPolicy: appInfo?.activationPolicy,
+            bundleId: appInfo?.bundleId,
+            includeTitle: windowRuleEngine.requiresTitle(
+                for: appInfo?.bundleId,
+                appName: appInfo?.name
+            )
+        )
+        return (
+            WindowRuleFacts(
+                appName: appInfo?.name,
+                ax: collected.facts,
+                sizeConstraints: sizeConstraints,
+                windowServer: nil
             ),
-            sizeConstraints: sizeConstraints,
-            windowServer: nil
+            collected.fullscreenAttribute
         )
     }
 }

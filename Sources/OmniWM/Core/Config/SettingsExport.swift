@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -20,6 +20,9 @@ struct SettingsExport: Equatable {
     var borders: Borders
 
     var overview: Overview
+    var windowSwitcher = WindowSwitcher()
+    var keyboardModes = KeyboardModes()
+    var workspaceAutoBackAndForth = false
 
     var hotkeyBindings: [HotkeyBinding]
     var systemHyperTrigger: SystemHyperTrigger
@@ -66,6 +69,7 @@ struct SettingsExport: Equatable {
 
     struct Focus: Codable, Equatable {
         var followsMouse: Bool
+        var edgeNavigationInterval: Double
         var raiseOnMouseFocus: Bool
         var lockModifier: FocusLockModifier
         var moveMouseToFocusedWindow: Bool
@@ -178,6 +182,9 @@ struct SettingsExport: Equatable {
         var windowResizeEnabled: Bool? = false
         var windowResizeFingerCount: GestureFingerCount? = .three
         var windowGestureSensitivity: Double? = 1.0
+        var resizePreviewStyle: ResizePreviewStyle? = .live
+        var dwindleGroupDragAcrossDisplays: DwindleGroupDrag? = .group
+        var adoptNativeResize: Bool? = false
     }
 
     struct StatusBar: Codable, Equatable {
@@ -296,9 +303,23 @@ extension SettingsExport.Clipboard {
 }
 
 extension SettingsExport.Focus {
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        followsMouse = try container.decode(Bool.self, forKey: .followsMouse)
+        edgeNavigationInterval = try container.decodeIfPresent(Double.self, forKey: .edgeNavigationInterval)
+            ?? Self.defaults().edgeNavigationInterval
+        raiseOnMouseFocus = try container.decode(Bool.self, forKey: .raiseOnMouseFocus)
+        lockModifier = try container.decode(FocusLockModifier.self, forKey: .lockModifier)
+        moveMouseToFocusedWindow = try container.decode(Bool.self, forKey: .moveMouseToFocusedWindow)
+        followsWindowToMonitor = try container.decode(Bool.self, forKey: .followsWindowToMonitor)
+        crossesMonitorAtEdge = try container.decode(Bool.self, forKey: .crossesMonitorAtEdge)
+        moveCrossesMonitorAtEdge = try container.decode(Bool.self, forKey: .moveCrossesMonitorAtEdge)
+    }
+
     static func defaults() -> Self {
         Self(
             followsMouse: false,
+            edgeNavigationInterval: 1.5,
             raiseOnMouseFocus: false,
             lockModifier: .off,
             moveMouseToFocusedWindow: false,
@@ -434,7 +455,10 @@ extension SettingsExport.Gestures {
             trackpadScrollStyle: .snap,
             workspaceSwipeEnabled: false,
             workspaceSwipeFingerCount: .three,
-            workspaceSwipeAxis: .vertical
+            workspaceSwipeAxis: .vertical,
+            resizePreviewStyle: .live,
+            dwindleGroupDragAcrossDisplays: .group,
+            adoptNativeResize: false
         )
     }
 }

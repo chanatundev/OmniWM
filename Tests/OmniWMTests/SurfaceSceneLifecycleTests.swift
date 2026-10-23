@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 @testable import OmniWM
@@ -33,31 +33,6 @@ final class SurfaceSceneLifecycleTests: XCTestCase {
         secondWindow.close()
     }
 
-    func testDragSurfaceDestroyUnregistersAllOwnedWindowsIdempotently() {
-        let scene = SurfaceScene()
-        let coordinator = SurfaceCoordinator(scene: scene)
-        let controller = DragGhostController(
-            surfaceCoordinator: coordinator,
-            previews: PreviewCaptureCoordinator(ownedWindowRegistry: OwnedWindowRegistry()),
-            captureAccessAllowed: { false }
-        )
-
-        controller.beginDrag(
-            token: WindowToken(pid: 1, windowId: 720_001),
-            originalFrame: CGRect(x: 0, y: 0, width: 800, height: 600),
-            cursorLocation: CGPoint(x: 400, y: 300)
-        )
-        controller.showSwapTarget(frame: CGRect(x: 10, y: 20, width: 300, height: 200))
-        XCTAssertEqual(coordinator.visibleSurfaceIDs(kind: .dragGhost).count, 1)
-
-        controller.destroy()
-        controller.destroy()
-
-        XCTAssertTrue(coordinator.visibleSurfaceIDs(kind: .dragGhost).isEmpty)
-        XCTAssertEqual(coordinator.runtimeSnapshot().total, 0)
-        XCTAssertEqual(coordinator.runtimeSnapshot().orphanReverseEntries, 0)
-    }
-
     func testRepeatedDragControllerLifecyclesReturnAllIndexesToBaseline() {
         let scene = SurfaceScene()
         let coordinator = SurfaceCoordinator(scene: scene)
@@ -77,7 +52,10 @@ final class SurfaceSceneLifecycleTests: XCTestCase {
                 cursorLocation: CGPoint(x: 400, y: 300)
             )
             controller.showSwapTarget(frame: CGRect(x: 10, y: 20, width: 300, height: 200))
+            XCTAssertEqual(coordinator.visibleSurfaceIDs(kind: .dragGhost).count, 1)
             controller.destroy()
+            controller.destroy()
+            XCTAssertTrue(coordinator.visibleSurfaceIDs(kind: .dragGhost).isEmpty)
 
             let snapshot = coordinator.runtimeSnapshot()
             XCTAssertEqual(snapshot.total, 0)
@@ -176,6 +154,26 @@ final class SurfaceSceneLifecycleTests: XCTestCase {
         XCTAssertFalse(scene.contains(windowNumber: 92))
         XCTAssertEqual(scene.runtimeSnapshot().total, 0)
         XCTAssertEqual(scene.runtimeSnapshot().reverseEntries, 0)
+    }
+
+    func testWindowReusingADeallocatedRegistrationAddressIsNotContained() throws {
+        let scene = SurfaceScene()
+        var stale = Set<ObjectIdentifier>()
+        autoreleasepool {
+            for index in 0 ..< 200 {
+                let window = NSPanel()
+                stale.insert(ObjectIdentifier(window))
+                scene.register(window: window, node: node(id: "leaked-\(index)", window: window))
+                window.close()
+            }
+        }
+        let candidates = (0 ..< 200).map { _ in NSPanel() }
+        defer { candidates.forEach { $0.close() } }
+        let reused = try XCTUnwrap(
+            candidates.first { stale.contains(ObjectIdentifier($0)) },
+            "allocator did not reuse a released window address"
+        )
+        XCTAssertFalse(scene.contains(window: reused))
     }
 
     private func node(id: String, window: NSWindow) -> SurfaceScene.SurfaceNode {

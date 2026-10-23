@@ -1,9 +1,26 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
 extension IPCJSONWriter {
+    mutating func value(_ value: borrowing [IPCWindowGatherActionDescriptor]) throws {
+        begin(91)
+        var first = true
+        let span = value.span
+        var index = 0
+        while index < span.count {
+            item(&first)
+            try self.value(span[index])
+            index += 1
+        }
+        end(93)
+    }
+
+    mutating func value(_ value: borrowing IPCWindowMarkActionName) throws {
+        try self.value(value.rawValue)
+    }
+
     mutating func value(_ value: borrowing IPCWindowMarkActionDescriptor) throws {
         begin(123)
         var first = true
@@ -75,6 +92,8 @@ extension IPCJSONWriter {
         try self.value(value.shellActions)
         self.key("windowActions", &first)
         try self.value(value.windowActions)
+        self.key("windowGatherActions", &first)
+        try self.value(value.windowGatherActions)
         self.key("windowMarkActions", &first)
         try self.value(value.windowMarkActions)
         self.key("workspaceActions", &first)
@@ -175,6 +194,8 @@ extension IPCJSONWriter {
         try self.value(value.subscriptions)
         self.key("windowActions", &first)
         try self.value(value.windowActions)
+        self.key("windowGatherActions", &first)
+        try self.value(value.windowGatherActions)
         self.key("windowIdScope", &first)
         try self.value(value.windowIdScope)
         self.key("windowMarkActions", &first)
@@ -210,6 +231,8 @@ extension IPCJSONWriter {
         var first = true
         self.key("app", &first)
         try self.value(value.app)
+        self.key("id", &first)
+        try self.value(value.id)
         self.key("name", &first)
         try self.value(value.name)
         if let fieldValue = value.title {
@@ -232,13 +255,5 @@ extension IPCJSONWriter {
             index += 1
         }
         end(93)
-    }
-
-    mutating func value(_ value: borrowing IPCWindowMarksResult) throws {
-        begin(123)
-        var first = true
-        self.key("marks", &first)
-        try self.value(value.marks)
-        end(125)
     }
 }

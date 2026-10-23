@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -67,7 +67,7 @@ extension MouseEventHandler {
             cancelActiveMouseInteraction()
             return false
         }
-        if shouldBlockOwnWindowInput(at: location) { return false }
+        if shouldBlockOwnWindowGestureInput(at: location) { return false }
         guard !state.isResizing, !state.isMoving else { return false }
 
         return true

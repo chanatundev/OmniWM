@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -76,8 +76,17 @@ extension StateReducer {
         case let .nativeFocusOwnerChanged(owner, preservePendingManagedFocus, _):
             var focusSession = currentSnapshot.focusSession
             focusSession.nativeFocusOwner = owner
-            if case let .managed(token) = owner {
+            switch owner {
+            case let .managed(token):
                 focusSession.selectedManagedToken = token
+                focusSession.recordWindowFocus(token)
+            case let .external(identity):
+                guard let token = identity.exactToken else { break }
+                if currentSnapshot.windows.contains(where: { $0.token == token }) {
+                    focusSession.recordWindowFocus(token)
+                }
+            default:
+                break
             }
             if !preservePendingManagedFocus {
                 focusSession.pendingManagedFocus = .empty
@@ -128,6 +137,7 @@ extension StateReducer {
         case let .nativeFullscreenPlaceholderSelected(token, _, _):
             var focusSession = currentSnapshot.focusSession
             focusSession.selectedManagedToken = token
+            focusSession.recordWindowFocus(token)
             focusSession.nativeFocusOwner = .external(pid: token.pid, windowId: token.windowId)
             focusSession.clearPendingManagedFocus()
             setFocusSession(focusSession, current: currentSnapshot.focusSession, plan: &plan)

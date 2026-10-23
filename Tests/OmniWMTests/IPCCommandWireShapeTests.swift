@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -143,6 +143,10 @@ final class IPCCommandWireShapeTests: XCTestCase {
         #"{"name":"media-play-pause"}"#,
         #"{"name":"media-next"}"#,
         #"{"name":"media-previous"}"#,
+        #"{"name":"toggle-shortcut-pause"}"#,
+        #"{"name":"begin-prefix"}"#,
+        #"{"name":"toggle-window-mode"}"#,
+        #"{"name":"exit-keyboard-mode"}"#,
         #"{"name":"toggle-focused-window-floating"}"#,
         #"{"name":"close-focused-window"}"#,
         #"{"arguments":{"scratchpadIndex":2},"name":"scratchpad-assign"}"#,

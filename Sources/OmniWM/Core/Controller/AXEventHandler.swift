@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -23,7 +23,7 @@ final class AXEventHandler {
     var createPlacementContextsByWindowId: [UInt32: WindowCreatePlacementContext] = [:]
     private var pendingManagedReplacementBursts: [ManagedReplacementKey: PendingManagedReplacementBurst] = [:]
     private var pendingManagedReplacementTasks: [ManagedReplacementKey: Task<Void, Never>] = [:]
-    private let ruleReevaluation: WindowRuleReevaluationScheduler
+    let ruleReevaluation: WindowRuleReevaluationScheduler
     var admissionRetryStateByWindowId: [UInt32: AdmissionRetryState] = [:]
     var nextAdmissionRetryGeneration: UInt64 = 1
     var nextAdmissionRetryExecutionOwner: UInt64 = 1
@@ -41,6 +41,7 @@ final class AXEventHandler {
     private var nextManagedReplacementEventSequence: UInt64 = 0
     var visibleWindowInfoProvider: () -> [WindowServerInfo]
     var windowInfoProvider: (UInt32) -> WindowServerInfo?
+    var windowTitleProvider: @MainActor (UInt32) -> String? = { AXWindowService.titlePreferFast(windowId: $0) }
     var windowInfoBatchProvider: (Set<UInt32>) async throws -> [UInt32: WindowServerInfo]?
     var createdWindowAXRefProvider: (WindowToken) async throws -> AXWindowRef? = lookupCreatedWindowIdentity
     var frameObservations = FrameObservations()
@@ -61,7 +62,6 @@ final class AXEventHandler {
     }
 
     var applicationIsHiddenProvider: @MainActor (pid_t) -> Bool = AXEventHandler.nativeApplicationIsHidden
-
     var applicationIsTerminatedProvider: (pid_t) -> Bool = { pid in
         if AppAXContextRegistry.contexts[pid]?.nsApp.isTerminated == true {
             return true

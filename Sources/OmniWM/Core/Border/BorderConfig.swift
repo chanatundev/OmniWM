@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 
@@ -53,6 +53,24 @@ struct BorderConfig: Equatable {
             gradient: settings.borders.gradient.map { resolvedGradient($0, isDark: isDark) },
             glow: settings.borders.glow.map { resolvedGlow($0, isDark: isDark) }
         )
+    }
+
+    static func keyboardModeColor(_ kind: KeyboardModeKind) -> SettingsColor? {
+        switch kind {
+        case .normal: nil
+        case .paused: SettingsColor(red: 1, green: 0.584, blue: 0, alpha: 1)
+        case .prefix,
+             .window: SettingsColor(red: 0.204, green: 0.78, blue: 0.349, alpha: 1)
+        }
+    }
+
+    func indicating(_ kind: KeyboardModeKind) -> BorderConfig {
+        guard let color = Self.keyboardModeColor(kind) else { return self }
+        var config = self
+        config.color = color
+        config.gradient = nil
+        config.glow?.color = color
+        return config
     }
 
     static func resolvedColor(

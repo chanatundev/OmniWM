@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -266,7 +266,7 @@ extension ShellWidgetHost {
             guard let action = ShellAction(request.text) else {
                 report(state, ShellScriptFailure(
                     kind: .runtime,
-                    message: "omniwm.run(\"\(request.text)\") is not an omniwmctl, shell or volume command"
+                    message: "omniwm.run command is not an omniwmctl, shell or volume command"
                 ))
                 continue
             }

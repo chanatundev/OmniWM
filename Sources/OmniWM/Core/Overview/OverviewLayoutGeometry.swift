@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -19,11 +19,11 @@ struct OverviewLayoutGeometry {
     let contentTopPadding: CGFloat
     let contentBottomPadding: CGFloat
 
-    init(screenFrame: CGRect, scale: CGFloat) {
+    init(screenFrame: CGRect, scale: CGFloat, topSafeAreaInset: CGFloat = 0) {
         let metricsScale = OverviewLayoutCalculator.clampedScale(scale)
         let scaledSearchBarHeight = OverviewLayoutMetrics.searchBarHeight * metricsScale
         let scaledSearchBarPadding = OverviewLayoutMetrics.searchBarPadding * metricsScale
-        let searchBarY = screenFrame.maxY - scaledSearchBarHeight - scaledSearchBarPadding
+        let searchBarY = screenFrame.maxY - max(0, topSafeAreaInset) - scaledSearchBarHeight - scaledSearchBarPadding
         let searchBarFrame = CGRect(
             x: screenFrame.minX + screenFrame.width * 0.25,
             y: searchBarY,

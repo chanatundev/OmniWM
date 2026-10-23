@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -73,7 +73,6 @@ extension WMController {
     ) -> Bool {
         guard canFocusWindow(pid: pid, windowId: windowId) else { return false }
         MainThreadAXSpanTrace.measure(.fronting, pid: pid, windowId: windowId) {
-            windowFocusOperations.activateApp(pid)
             windowFocusOperations.focusSpecificWindow(pid, UInt32(windowId), axRef.element)
             windowFocusOperations.raiseWindow(axRef.element)
         }

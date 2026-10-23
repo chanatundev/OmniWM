@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -17,6 +17,10 @@ extension AXEventHandler {
             try await SkyLight.shared.queryWindowInfoDeferred(windowIds: [$0])?[$0]
         }
 
+        var nativeDragQuery: @MainActor (UInt32) -> WindowServerInfo? = {
+            SkyLight.shared.queryWindowInfoOffMainConnection($0)
+        }
+
         var byWindowId: [UInt32: FrameObservation] = [:]
         var nextGeneration: UInt64 = 1
     }
@@ -30,7 +34,10 @@ extension AXEventHandler {
             cancelFrameObservation(windowId: windowId)
             applyFrameChange(
                 windowId: windowId,
-                identity: resolveWindowServerIdentity(windowId),
+                identity: WindowServerIdentityResolution(
+                    windowId: windowId,
+                    info: frameObservations.nativeDragQuery(windowId)
+                ),
                 controller: controller
             )
         } else if frameObservations.byWindowId[windowId] != nil {

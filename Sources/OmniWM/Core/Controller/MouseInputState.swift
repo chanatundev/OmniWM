@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -49,6 +49,8 @@ struct MouseInputState {
         var receivedFrameChange = false
         var issuedUnreadableCorrection = false
         var terminalFailureRetryRequestId: AXFrameRequestId?
+        var adoptionStartFrame: CGRect?
+        var dwindleResizeWorkspaceId: WorkspaceDescriptor.ID?
     }
 
     struct FocusFollowsMouseSample {
@@ -59,6 +61,7 @@ struct MouseInputState {
 
     var eventTap: CFMachPort?
     var runLoopSource: CFRunLoopSource?
+    var eventTapRunLoop: CFRunLoop?
     var moveTap: CFMachPort?
     var moveTapRunLoopSource: CFRunLoopSource?
     var moveTapDeliversMouseMoved = false
@@ -77,6 +80,7 @@ struct MouseInputState {
 
     var capturedInteractionButton: MouseEventHandler.MouseButton?
     var capturedOtherMouseButton: Int64?
+    var parkingEdgePressButton: MouseEventHandler.MouseButton?
     var resizeLayout: LayoutType?
     var moveLayout: LayoutType?
     var awaitsNativeTitleBarDragTarget = false

@@ -22,7 +22,7 @@ omniwmctl <command> [arguments...] [--format json|ndjson|table|tsv|text] [--json
 | `query` | remote | Query OmniWM state, registries, and protocol capabilities |
 | `rule` | remote | Manage persisted window rules and reapply them to windows |
 | `workspace` | remote | Perform workspace actions such as focusing, moving, or renaming by workspace name |
-| `window` | remote | Perform window actions using session-scoped opaque IDs; it also supports [window marks](/reference/cli/actions/#window-marks) |
+| `window` | remote | Perform window actions using session-scoped opaque IDs; it also supports [window marks](/reference/cli/actions/#window-marks) and [window gather](/reference/cli/actions/#window-gather) |
 | `shell` | remote | Set [values for Luau bar widgets](/reference/cli/actions/#shell-widgets) or open their popouts. Unreleased: available when building from `main`. |
 | `subscribe` | remote | Stream the subscribe handshake plus live event envelopes as JSON |
 | `watch` | remote | Consume subscription events and run a child command once per event |
@@ -215,6 +215,17 @@ Workspace IDs are global, so `switch-workspace 3` targets workspace `3` wherever
 | `command toggle-system-stats` | — | shared | Toggle the system stats popup when a workspace-bar System Stats button is available |
 
 For example, run `omniwmctl command hidden-bar panel` to show or dismiss the Hidden Bar panel.
+
+### Keyboard Modes
+
+Unreleased: available when building from `main`. See [keyboard modes](/guides/keyboard-shortcuts/#keyboard-modes).
+
+| Command | Arguments | Layout | Description |
+|---------|-----------|--------|-------------|
+| `command toggle-shortcut-pause` | — | shared | Pause OmniWM shortcuts so their keys reach the focused app, or resume them |
+| `command begin-prefix` | — | shared | Arm the prefix: the next mode key runs its command; returns `no_change` when no mode key is assigned, Secure Input is on, the screen is locked, or OmniWM cannot capture keys |
+| `command toggle-window-mode` | — | shared | Enter Window mode, where mode keys run their commands until Escape, or leave it; refused for the same reasons as `begin-prefix` |
+| `command exit-keyboard-mode` | — | shared | Leave Pause, Prefix, or Window mode |
 
 ### Volume and Media
 

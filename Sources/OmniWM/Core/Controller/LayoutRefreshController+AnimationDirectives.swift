@@ -1,23 +1,18 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
 import QuartzCore
 
 extension LayoutRefreshController {
-    func applySessionPatch(_ patch: WorkspaceSessionPatch) {
-        controller?.workspaceManager.applySessionPatch(patch)
-    }
-
     func applyAnimationDirectives(
         _ directives: [AnimationDirective],
         workspaceId: WorkspaceDescriptor.ID,
         focusSeqAccepted: Bool,
-        suppressWindowActivation: Bool
+        suppressWindowActivation: Bool,
+        controller: WMController
     ) {
-        guard let controller else { return }
-
         for directive in directives {
             switch directive {
             case .none:

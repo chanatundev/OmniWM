@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Dispatch
 import Foundation
@@ -15,6 +15,7 @@ enum MainThreadAXSpanTrace {
         case orderWindow = "order-window"
         case closeButtonPress = "close-button-press"
         case setNativeFullscreen = "set-native-fullscreen"
+        case unminimize
         case readFrame = "read-frame"
         case readSubrole = "read-subrole"
         case readRoleAndSubrole = "read-role-subrole"

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import Foundation
@@ -61,10 +61,7 @@ struct StopWindowOperations {
         Self(
             setTimeout: { AXUIElementSetMessagingTimeout(window.element, $0) == .success },
             readMinimized: { AXWindowService.isMinimized(window) },
-            unminimize: {
-                AXUIElementSetAttributeValue(window.element, kAXMinimizedAttribute as CFString, kCFBooleanFalse) ==
-                    .success
-            },
+            unminimize: { AXWindowService.unminimize(window) },
             readFrame: { try? AXWindowService.frame(window) },
             writePosition: { frame, current in
                 AXWindowService.setFrame(
@@ -131,7 +128,7 @@ enum AXStopWindowRestoration {
 }
 
 extension AppAXContext {
-    nonisolated func restoreForStop(
+    func restoreForStop(
         _ target: StopWindowTarget,
         deadline: TimeInterval,
         operations: @escaping @Sendable (AXWindowRef) -> StopWindowOperations = StopWindowOperations.native

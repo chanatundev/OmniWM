@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 
@@ -12,6 +12,17 @@ enum NiriColumnViewportRelation: Equatable {
 struct NiriColumnSummary: Equatable {
     let columnIndexByToken: [WindowToken: Int]
     let viewport: [NiriColumnViewportRelation]?
+    let displayModes: [ColumnDisplay]?
+
+    init(
+        columnIndexByToken: [WindowToken: Int],
+        viewport: [NiriColumnViewportRelation]?,
+        displayModes: [ColumnDisplay]? = nil
+    ) {
+        self.columnIndexByToken = columnIndexByToken
+        self.viewport = viewport
+        self.displayModes = displayModes
+    }
 }
 
 extension NiriLayoutEngine {
@@ -29,7 +40,8 @@ extension NiriLayoutEngine {
         }
         return NiriColumnSummary(
             columnIndexByToken: columnIndexByToken,
-            viewport: geometry.map { viewportRelations(of: columns, in: workspaceId, state: state, geometry: $0) }
+            viewport: geometry.map { viewportRelations(of: columns, in: workspaceId, state: state, geometry: $0) },
+            displayModes: columns.map { $0.column.displayMode }
         )
     }
 

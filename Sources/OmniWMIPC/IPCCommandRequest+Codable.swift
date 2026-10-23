@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 extension IPCCommandRequest: Codable {
     public init(from decoder: Decoder) throws {
@@ -39,6 +39,7 @@ extension IPCCommandRequest: Codable {
              .fullscreen,
              .presentation,
              .media,
+             .keyboardMode,
              .windowState,
              .openMenuAnywhere:
             break

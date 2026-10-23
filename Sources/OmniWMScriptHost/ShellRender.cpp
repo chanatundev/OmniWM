@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 #include "ScriptHostInternal.h"
 
@@ -3051,12 +3051,13 @@ int popoutAction(lua_State *) {
 
 constexpr size_t maximumRequests = 16;
 constexpr size_t maximumLogs = 32;
-constexpr size_t maximumMessageLength = 512;
+constexpr size_t maximumLogLength = 512;
+constexpr size_t maximumRequestLength = 16384;
 
 void storeMessage(lua_State *L, omni_instance *instance, omni_message_kind kind, const char *text, size_t length) {
     bool stored = true;
     try {
-        instance->messages[kind].emplace_back(text, std::min(length, maximumMessageLength));
+        instance->messages[kind].emplace_back(text, length);
     } catch (...) {
         stored = false;
     }
@@ -3074,6 +3075,9 @@ int runRequest(lua_State *L) {
     }
     size_t length = 0;
     const char *text = luaL_checklstring(L, 1, &length);
+    if (length > maximumRequestLength) {
+        luaL_error(L, "omniwm.run commands are limited to %d bytes", static_cast<int>(maximumRequestLength));
+    }
     if (asynchronous) {
         queueServiceMessage(L, OMNI_MESSAGE_REQUEST, text, length);
     } else {
@@ -3101,6 +3105,7 @@ int logMessage(lua_State *L) {
     lua_concat(L, count * 2 - 1);
     size_t length = 0;
     const char *text = lua_tolstring(L, -1, &length);
+    length = std::min(length, maximumLogLength);
     if (asynchronous) {
         queueServiceMessage(L, OMNI_MESSAGE_LOG, text, length);
     } else {
@@ -3800,7 +3805,8 @@ omni_status omni_instance_set_value(omni_instance *instance, const char *key, co
     try {
         lua_getref(P, instance->dataRef);
         ValueReader reader{value, value + length};
-        if (!pushValue(P, reader, 0) || reader.remaining() != 0) {
+        int depthLimit = std::strcmp(key, "notifications") == 0 ? maximumDepth : maximumValueDepth;
+        if (!pushValue(P, reader, 0, false, depthLimit) || reader.remaining() != 0) {
             lua_settop(P, 0);
             return OMNI_ERR_INTERNAL;
         }

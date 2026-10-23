@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import Foundation
@@ -27,7 +27,7 @@ final class AccessibilityPermissionMonitor {
         }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(for: Self.pollInterval)
+                try? await Task.sleep(for: Self.pollInterval, tolerance: Self.pollInterval)
                 self?.yield(AXIsProcessTrusted())
             }
         }

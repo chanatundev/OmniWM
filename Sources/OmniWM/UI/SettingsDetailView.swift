@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import SwiftUI
 
@@ -67,6 +67,8 @@ struct SettingsDetailView: View {
             AppRulesView(settings: settings, controller: controller, editorState: navigation.ruleEditorState)
         case .overview:
             OverviewSettingsTab(settings: settings, controller: controller)
+        case .windowSwitcher:
+            WindowSwitcherSettingsTab(settings: settings, controller: controller)
         case .hotkeys:
             HotkeySettingsView(settings: settings, controller: controller)
         case .mouseTrackpad:

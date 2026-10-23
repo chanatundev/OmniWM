@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import ScreenCaptureKit
@@ -99,7 +99,7 @@ final class DragGhostController {
         ghostWindow?.showAt(cursorLocation: cursorLocation)
     }
 
-    private static func captureWindowImage(
+    static func captureWindowImage(
         token: WindowToken,
         pixelSize: CGSize,
         previews: PreviewCaptureCoordinator

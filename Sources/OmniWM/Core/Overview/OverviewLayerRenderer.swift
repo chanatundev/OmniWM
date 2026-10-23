@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import QuartzCore
@@ -215,8 +215,9 @@ final class OverviewLayerRenderer {
 
     func updateHover(from previous: WindowHandle?, layout: OverviewLayout, state: OverviewRenderState) {
         OverviewRenderer.withoutAnimation {
-            for handle in [previous, state.hoveredWindowHandle].compactMap({ $0 }) {
-                guard let window = layout.window(for: handle) else { continue }
+            let handles: InlineArray<2, WindowHandle?> = [previous, state.hoveredWindowHandle]
+            for index in handles.indices {
+                guard let handle = handles[index], let window = layout.window(for: handle) else { continue }
                 windowLayers[handle]?.updateEmphasis(window, state: state)
             }
         }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -110,6 +110,17 @@ extension IPCColumnViewport {
             self = .intersecting
         case .after:
             self = .after
+        }
+    }
+}
+
+extension IPCColumnDisplayMode {
+    init(displayMode: ColumnDisplay) {
+        switch displayMode {
+        case .normal:
+            self = .normal
+        case .tabbed:
+            self = .tabbed
         }
     }
 }

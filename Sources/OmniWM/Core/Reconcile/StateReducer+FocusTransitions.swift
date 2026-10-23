@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -79,6 +79,7 @@ extension StateReducer {
     ) -> FocusSessionSnapshot {
         var focusSession = focusSession
         focusSession.selectedManagedToken = token
+        focusSession.recordWindowFocus(token)
         focusSession.nativeFocusOwner = .managed(token)
         focusSession.pendingManagedFocus = .empty
         if mode != .floating {

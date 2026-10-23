@@ -1,11 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
 import OmniWMIPC
 
 extension WMController {
+    func updateWindowSwitcherSettings() {
+        hotkeys.configureWindowSwitcher(settings.windowSwitcher.export())
+        refreshHotkeyFailureSnapshots()
+        guard !settings.windowSwitcher.enabled else { return }
+        windowSwitcherControllerStorage?.shutdown()
+        windowSwitcherControllerStorage = nil
+    }
+
     func invalidateOverviewDeferredActionsForServiceStop() {
         windowActionHandlerStorage?.invalidateOverviewDeferredActionsForServiceStop()
     }

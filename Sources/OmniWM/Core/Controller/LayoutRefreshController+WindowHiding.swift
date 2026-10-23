@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -205,7 +205,8 @@ extension LayoutRefreshController {
         reason: HideReason,
         hiddenPlacementMonitors: [HiddenPlacementMonitorContext],
         isAnimationTick: Bool = false,
-        preserveWorkspaceInactive: Bool = true
+        preserveWorkspaceInactive: Bool = true,
+        afterFrameWritesOf awaitedWindowIds: Set<Int> = []
     ) {
         guard !targets.isEmpty, let controller else { return }
         var hiddenJobs: [(pid: pid_t, windowId: Int)] = []
@@ -248,7 +249,8 @@ extension LayoutRefreshController {
             applyParkPositionPlans(
                 parkPlans,
                 movablePlans: movableParkPlans,
-                animationTick: isAnimationTick
+                animationTick: isAnimationTick,
+                afterFrameWritesOf: awaitedWindowIds
             )
         }
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -365,7 +365,7 @@ extension WindowRuleReevaluation {
         for tokens: Set<WindowToken>
     ) async -> [WindowToken: WindowServerInfo]? {
         let windowIds = Set(tokens.compactMap { UInt32(exactly: $0.windowId) })
-        guard windowIds.count > 1 else { return nil }
+        guard !windowIds.isEmpty else { return nil }
         let infoByWindowId: [UInt32: WindowServerInfo]
         do {
             infoByWindowId = try await controller.axEventHandler.resolveWindowInfo(windowIds)

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 @preconcurrency import AppKit
 import Carbon
@@ -10,15 +10,51 @@ import IOKit.hidsystem
 final class HotkeyCenter {
     var onCommand: ((HotkeyInvocation) -> Void)?
     var isMouseButtonCaptured: ((Int64) -> Bool)?
+    var onWindowSwitcherAction: ((WindowSwitcherAction, UInt64) -> Void)?
+    var onKeyboardModeChange: ((KeyboardModeKind) -> Void)?
+    var isKeyboardModeArmingBlocked: (() -> Bool)?
+    var windowSwitcherEnabled = false
+    var windowSwitcherInput = WindowSwitcherInput()
+    var keyboardModeInput = KeyboardModeInput()
+    var keyboardModeTable = KeyboardModeTable()
+    var keyboardModeTimer: Task<Void, Never>?
+    var keyboardModeGeneration: UInt64 = 0
+    var pauseTimeout: Duration?
+    let keyboardModeSleep: @MainActor (Duration) async throws -> Void
+    let keyboardModeNow: () -> TimeInterval
 
-    private let carbonRegistrations = CarbonHotkeyRegistration()
-    private var isRunning = false
-    private var commandHotkeysSuspended = false
+    init(
+        sleep: @escaping @MainActor (Duration) async throws -> Void = { try await Task.sleep(for: $0) },
+        now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }
+    ) {
+        keyboardModeSleep = sleep
+        keyboardModeNow = now
+    }
 
-    private var configuration = HotkeyRuntimeConfiguration()
-    private var sideSpecificDispatch: [CommandHotkeyTapMatcher.Entry] = []
-    private var mouseButtonDispatch: [MouseButtonBinding: HotkeyCommand] = [:]
-    private var suppressedHotkeyKeyCodes: Set<UInt32> = []
+    var isWindowSwitcherAvailable: Bool {
+        windowSwitcherEnabled && hyperTriggerTap != nil
+    }
+
+    func configureWindowSwitcher(_ settings: SettingsExport.WindowSwitcher) {
+        let enabled = settings.enabled && settings.shortcuts.isEnabled
+        guard windowSwitcherEnabled != enabled || windowSwitcherInput.shortcuts != settings.shortcuts else { return }
+        windowSwitcherEnabled = enabled
+        windowSwitcherInput.shortcuts = settings.shortcuts
+        if isRunning { refreshCommandHotkeyRegistrations() }
+    }
+
+    func cancelWindowSwitcherSession(generation: UInt64) {
+        windowSwitcherInput.cancel(generation: generation)
+    }
+
+    let carbonRegistrations = CarbonHotkeyRegistration()
+    private(set) var isRunning = false
+    private(set) var commandHotkeysSuspended = false
+
+    private(set) var configuration = HotkeyRuntimeConfiguration()
+    var sideSpecificDispatch: [CommandHotkeyTapMatcher.Entry] = []
+    var mouseButtonDispatch: [MouseButtonBinding: HotkeyCommand] = [:]
+    var suppressedHotkeyKeyCodes: Set<UInt32> = []
     var hyperTriggerTap: CFMachPort?
     var hyperTriggerRunLoopSource: CFRunLoopSource?
     var hyperTrigger = HyperTriggerStateMachine(trigger: .none, capsLockRemapped: false)
@@ -26,14 +62,11 @@ final class HotkeyCenter {
     private var capsLockToggler = CapsLockToggler()
     private var capsLockHyperRemapActive = false
 
-    private(set) var registrationFailures: [HotkeyCommand: HotkeyRegistrationFailureReason] = [:]
+    var registrationFailures: [HotkeyCommand: HotkeyRegistrationFailureReason] = [:]
     private(set) var systemHyperTriggerFailure: SystemHyperTriggerFailure?
 
     private static var hyperFlagMask: UInt64 {
-        let hyper = KeySymbolMapper.hyperModifiers
-        return ModifierFlagMask.all.reduce(UInt64(0)) { mask, flag in
-            hyper & flag.carbon != 0 ? mask | flag.independent : mask
-        }
+        ModifierFlagMask.independentFlags(carbon: KeySymbolMapper.hyperModifiers)
     }
 
     var isHyperTriggerActive: Bool {
@@ -53,11 +86,13 @@ final class HotkeyCenter {
             registrationFailureCount: registrationFailures.count,
             sideSpecificCount: sideSpecificDispatch.count,
             bindingCount: configuration.bindings.count,
-            bindings: Self.bindingFacts(for: configuration.bindings)
+            bindings: Self.bindingFacts(for: configuration.bindings),
+            keyboardMode: keyboardModeInput.kind.rawValue
         )
     }
 
     isolated deinit {
+        keyboardModeTimer?.cancel()
         carbonRegistrations.unregister()
         stopHyperTriggerTap()
         restoreCapsLockHyperRemap()
@@ -65,7 +100,7 @@ final class HotkeyCenter {
     }
 
     func handleCarbonHotkey(id: UInt32, kind: UInt32) {
-        carbonRegistrations.handle(id: id, kind: kind, onCommand: onCommand)
+        carbonRegistrations.handle(id: id, kind: kind, onCommand: routeHotkeyInvocation)
     }
 
     func start() {
@@ -81,6 +116,7 @@ final class HotkeyCenter {
     func stop() {
         guard isRunning else { return }
         isRunning = false
+        setKeyboardMode(.normal)
         carbonRegistrations.unregister()
         stopHyperTriggerTap()
         restoreCapsLockHyperRemap()
@@ -91,6 +127,7 @@ final class HotkeyCenter {
     func setCommandHotkeysSuspended(_ suspended: Bool) {
         guard commandHotkeysSuspended != suspended else { return }
         commandHotkeysSuspended = suspended
+        resetTransientInputState()
         if isRunning {
             refreshCommandHotkeyRegistrations()
         }
@@ -107,19 +144,27 @@ final class HotkeyCenter {
         )
         guard force || nextConfiguration != configuration else { return }
         configuration = nextConfiguration
+        keyboardModeTable = KeyboardModeTable(bindings: newBindings)
         if isRunning {
             refreshCommandHotkeyRegistrations()
         }
     }
 
     private func reconcileEventTap() {
-        stopHyperTriggerTap()
+        resetTapBoundInputState()
+        EventTapTeardown.tearDown(
+            tap: &hyperTriggerTap,
+            runLoopSource: &hyperTriggerRunLoopSource
+        )
         restoreCapsLockHyperRemap()
         systemHyperTriggerFailure = nil
         hyperTrigger = HyperTriggerStateMachine(trigger: .none, capsLockRemapped: false)
 
         let hyperEnabled = configuration.systemHyperTrigger.isEnabled
-        guard hyperEnabled || !sideSpecificDispatch.isEmpty else { return }
+        guard keyboardTapRequiredOutsideModes || !keyboardModeTable.isEmpty || !suppressedHotkeyKeyCodes.isEmpty else {
+            releaseKeyboardModeCapture()
+            return
+        }
 
         if hyperEnabled {
             if activateCapsLockHyperRemapIfNeeded() {
@@ -144,7 +189,9 @@ final class HotkeyCenter {
             FallbackFiringRecorder.shared.note(.input, "hyperTapSetupFailed")
             restoreCapsLockHyperRemap()
             hyperTrigger = HyperTriggerStateMachine(trigger: .none, capsLockRemapped: false)
+            releaseKeyboardModeCapture()
         }
+        updateEventTapEnablement()
     }
 
     private func refreshCommandHotkeyRegistrations() {
@@ -173,6 +220,7 @@ final class HotkeyCenter {
             }
             sideSpecificDispatch = []
         }
+        applyRegistrationFilters()
         DiagnosticsEventRecorder.shared.recordLifecycle(
             name: "hotkeys.registered registered=\(carbonRegistrations.count) "
                 + "failures=\(registrationFailures.count) sided=\(sideSpecificDispatch.count) "
@@ -237,8 +285,15 @@ final class HotkeyCenter {
     }
 
     func resetTransientInputState() {
+        resetTapBoundInputState()
+        releaseKeyboardModeCapture()
+        updateEventTapEnablement()
+    }
+
+    private func resetTapBoundInputState() {
+        windowSwitcherInput.reset()
+        onWindowSwitcherAction?(.cancel, windowSwitcherInput.generation)
         hyperTrigger.reset()
-        suppressedHotkeyKeyCodes.removeAll()
     }
 
     func stopHyperTriggerTap() {
@@ -251,7 +306,16 @@ final class HotkeyCenter {
 }
 
 extension HotkeyCenter {
-    private func handleHyperTriggerEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+    func handleHyperTriggerEvent(type: CGEventType, event: CGEvent) -> Unmanaged<CGEvent>? {
+        let switcherDecision = windowSwitcherInput.handle(
+            type: type,
+            keyCode: Int(event.getIntegerValueField(.keyboardEventKeycode)),
+            flags: event.flags,
+            isRepeat: event.getIntegerValueField(.keyboardEventAutorepeat) != 0,
+            canBegin: windowSwitcherEnabled && !commandHotkeysSuspended && keyboardModeInput.kind == .normal
+        )
+        if let action = switcherDecision.action { onWindowSwitcherAction?(action, windowSwitcherInput.generation) }
+        if switcherDecision.consumed { return nil }
         switch type {
         case .tapDisabledByTimeout:
             InputTapHealth.recordTapDisabled(mouse: false, byTimeout: true)
@@ -263,6 +327,7 @@ extension HotkeyCenter {
         case .tapDisabledByUserInput:
             InputTapHealth.recordTapDisabled(mouse: false, byTimeout: false)
             resetTransientInputState()
+            hyperTriggerTap.map { CGEvent.tapEnable(tap: $0, enable: false) }
             return Unmanaged.passUnretained(event)
         case .keyDown,
              .keyUp:
@@ -298,12 +363,16 @@ extension HotkeyCenter {
             if suppressedHotkeyKeyCodes.contains(keyCode) {
                 return nil
             }
+            if keyboardModeInput.capturesKeys, handleKeyboardModeKeyDown(keyCode: keyCode, event: event) {
+                return nil
+            }
             if dispatchSideSpecificHotkey(keyCode: keyCode, event: event) {
                 return nil
             }
             return Unmanaged.passUnretained(event)
         case .keyUp:
             if suppressedHotkeyKeyCodes.remove(keyCode) != nil {
+                if suppressedHotkeyKeyCodes.isEmpty { updateEventTapEnablement() }
                 return nil
             }
             return applyHyperTriggerDecision(
@@ -368,9 +437,7 @@ extension HotkeyCenter {
 
     func dispatchMouseButton(_ button: Int64, flags: CGEventFlags) -> Bool {
         guard isRunning, !mouseButtonDispatch.isEmpty else { return false }
-        var modifiers = ModifierFlagMask.all.reduce(UInt32(0)) { mask, flag in
-            flags.rawValue & flag.independent != 0 ? mask | flag.carbon : mask
-        }
+        var modifiers = ModifierFlagMask.carbonModifiers(independent: flags.rawValue)
         if hyperTrigger.isActive {
             modifiers |= KeySymbolMapper.hyperModifiers
         }
@@ -381,19 +448,21 @@ extension HotkeyCenter {
             _ = hyperTrigger.handleMouseDown(button)
         }
         InputTrace.record("hotkey.mouse cmd=\(command.displayName)")
-        onCommand?(HotkeyInvocation(command: command))
+        routeHotkeyInvocation(HotkeyInvocation(command: command))
         return true
     }
 
     private func dispatchSideSpecificHotkey(keyCode: UInt32, event: CGEvent) -> Bool {
         guard event.getIntegerValueField(.keyboardEventAutorepeat) == 0 else { return false }
         let rawFlags = event.flags.rawValue
-        if let entry = sideSpecificDispatch.first(where: {
-            CommandHotkeyTapMatcher.matches($0.binding, keyCode: keyCode, rawFlags: rawFlags)
-        }) {
+        if let entry = CommandHotkeyTapMatcher.firstMatch(
+            keyCode: keyCode,
+            rawFlags: rawFlags,
+            entries: sideSpecificDispatch
+        ) {
             suppressedHotkeyKeyCodes.insert(keyCode)
             InputTrace.record("hotkey.sided cmd=\(entry.command.displayName)")
-            onCommand?(
+            routeHotkeyInvocation(
                 HotkeyInvocation(
                     command: entry.command,
                     trigger: PhysicalHotkeyTrigger(

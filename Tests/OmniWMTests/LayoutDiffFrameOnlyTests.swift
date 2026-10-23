@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import CoreGraphics
@@ -167,7 +167,7 @@ final class LayoutDiffFrameOnlyTests: XCTestCase {
             isAnimationTick: true
         )
 
-        LayoutDiffExecutor(refreshController: controller.layoutRefreshController).execute(plan)
+        LayoutDiffExecutor(refreshController: controller.layoutRefreshController).execute(plan, controller: controller)
 
         XCTAssertEqual(controller.axManager.recentFrameWriteFailure(for: windowId), .contextUnavailable)
         XCTAssertEqual(controller.axManager.recentFrameWriteFailureComponents(for: windowId), .position)

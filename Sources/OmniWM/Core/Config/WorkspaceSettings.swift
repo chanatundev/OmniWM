@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -14,6 +14,10 @@ final class WorkspaceSettings {
     }
 
     var defaultLayoutType = WorkspaceSettings.defaults.defaultLayoutType {
+        didSet { onChange?() }
+    }
+
+    var autoBackAndForth = WorkspaceSettings.defaults.workspaceAutoBackAndForth {
         didSet { onChange?() }
     }
 

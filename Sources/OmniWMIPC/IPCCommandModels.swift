@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -69,6 +69,7 @@ public enum IPCCommandRequest: Equatable, Sendable {
     case fullscreen(IPCFullscreenCommand)
     case presentation(IPCPresentationCommand)
     case media(IPCMediaCommand)
+    case keyboardMode(IPCKeyboardModeCommand)
     case windowState(IPCWindowStateCommand)
     case scratchpad(IPCScratchpadCommand)
     case openMenuAnywhere
@@ -109,6 +110,8 @@ public enum IPCCommandRequest: Equatable, Sendable {
             .presentation(command)
         case let .media(command):
             .media(command)
+        case let .keyboardMode(command):
+            .keyboardMode(command)
         case let .windowState(command):
             .windowState(command)
         case let .scratchpad(command):

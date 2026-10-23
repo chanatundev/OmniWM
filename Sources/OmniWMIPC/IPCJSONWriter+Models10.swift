@@ -1,9 +1,90 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
 extension IPCJSONWriter {
+    mutating func fields0(_ value: borrowing IPCRuleDefinition, _ first: inout Bool) throws {
+        if let fieldValue = value.appNameSubstring {
+            self.key("appNameSubstring", &first)
+            try self.value(fieldValue)
+        }
+        if let fieldValue = value.assignToWorkspace {
+            self.key("assignToWorkspace", &first)
+            try self.value(fieldValue)
+        }
+        if let fieldValue = value.axRole {
+            self.key("axRole", &first)
+            try self.value(fieldValue)
+        }
+        if let fieldValue = value.axSubrole {
+            self.key("axSubrole", &first)
+            try self.value(fieldValue)
+        }
+        self.key("bundleId", &first)
+        try self.value(value.bundleId)
+        if let fieldValue = value.initialContainerPrimarySpan {
+            self.key("initialContainerPrimarySpan", &first)
+            try self.value(fieldValue)
+        }
+    }
+
+    mutating func fields1(_ value: borrowing IPCRuleDefinition, _ first: inout Bool) throws {
+        self.key("layout", &first)
+        try self.value(value.layout)
+        if let fieldValue = value.minHeight {
+            self.key("minHeight", &first)
+            try self.value(fieldValue)
+        }
+        if let fieldValue = value.minWidth {
+            self.key("minWidth", &first)
+            try self.value(fieldValue)
+        }
+        if let fieldValue = value.titleRegex {
+            self.key("titleRegex", &first)
+            try self.value(fieldValue)
+        }
+        if let fieldValue = value.titleSubstring {
+            self.key("titleSubstring", &first)
+            try self.value(fieldValue)
+        }
+    }
+
+    mutating func value(_ value: borrowing IPCRuleDefinition) throws {
+        begin(123)
+        var first = true
+        try fields0(value, &first)
+        try fields1(value, &first)
+        end(125)
+    }
+
+    mutating func value(_ value: borrowing IPCRuleApplyTarget) throws {
+        switch value {
+        case .focused:
+            begin(123)
+            var first = true
+            self.key("kind", &first)
+            try self.value("focused")
+            end(125)
+        case let .window(id):
+            begin(123)
+            var first = true
+            self.key("kind", &first)
+            try self.value("window")
+            self.key("windowId", &first)
+            try self.value(id)
+            end(125)
+        case let .pid(pid):
+            begin(123)
+            var first = true
+            self.key("kind", &first)
+            try self.value("pid")
+            self.key("pid", &first)
+            try self.value(pid)
+            end(125)
+        }
+    }
+
     mutating func ruleRequestAdd(_ rule: borrowing IPCRuleDefinition) throws {
         begin(123)
         var first = true
@@ -151,114 +232,5 @@ extension IPCJSONWriter {
 
     mutating func value(_ value: borrowing IPCCycleDirection) throws {
         try self.value(value.rawValue)
-    }
-
-    mutating func value(_ value: borrowing IPCWindowRequest) throws {
-        begin(123)
-        var first = true
-        if let fieldValue = value.change {
-            self.key("change", &first)
-            try self.value(fieldValue)
-        }
-        if let fieldValue = value.columnIndex {
-            self.key("columnIndex", &first)
-            try self.value(fieldValue)
-        }
-        if let fieldValue = value.cycle {
-            self.key("cycle", &first)
-            try self.value(fieldValue)
-        }
-        if let fieldValue = value.direction {
-            self.key("direction", &first)
-            try self.value(fieldValue)
-        }
-        self.key("name", &first)
-        try self.value(value.name)
-        if let fieldValue = value.scratchpadIndex {
-            self.key("scratchpadIndex", &first)
-            try self.value(fieldValue)
-        }
-        self.key("windowId", &first)
-        try self.value(value.windowId)
-        if let fieldValue = value.workspaceTarget {
-            self.key("workspaceTarget", &first)
-            try self.value(fieldValue)
-        }
-        end(125)
-    }
-
-    mutating func value(_ value: borrowing IPCWindowMarkRequest) throws {
-        switch value {
-        case let .set(mark):
-            begin(123)
-            var first = true
-            self.key("mark", &first)
-            try self.value(mark)
-            self.key("name", &first)
-            try self.value("set")
-            end(125)
-        case .list:
-            begin(123)
-            var first = true
-            self.key("name", &first)
-            try self.value("list")
-            end(125)
-        case let .focus(mark):
-            begin(123)
-            var first = true
-            self.key("mark", &first)
-            try self.value(mark)
-            self.key("name", &first)
-            try self.value("focus")
-            end(125)
-        case let .summon(mark):
-            begin(123)
-            var first = true
-            self.key("mark", &first)
-            try self.value(mark)
-            self.key("name", &first)
-            try self.value("summon")
-            end(125)
-        case let .remove(mark):
-            begin(123)
-            var first = true
-            self.key("mark", &first)
-            try self.value(mark)
-            self.key("name", &first)
-            try self.value("remove")
-            end(125)
-        }
-    }
-
-    mutating func shellRequestSet(_ key: borrowing String, _ text: borrowing String) throws {
-        begin(123)
-        var first = true
-        self.key("key", &first)
-        try self.value(key)
-        self.key("name", &first)
-        try self.value("set")
-        self.key("value", &first)
-        try self.value(text)
-        end(125)
-    }
-
-    mutating func shellRequestUnset(_ key: borrowing String) throws {
-        begin(123)
-        var first = true
-        self.key("key", &first)
-        try self.value(key)
-        self.key("name", &first)
-        try self.value("unset")
-        end(125)
-    }
-
-    mutating func shellRequestToggle(_ widget: borrowing String) throws {
-        begin(123)
-        var first = true
-        self.key("name", &first)
-        try self.value("toggle")
-        self.key("widget", &first)
-        try self.value(widget)
-        end(125)
     }
 }

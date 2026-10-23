@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import OmniWMIPC
 import SwiftUI
@@ -70,6 +70,16 @@ struct WorkspacesSettingsTab: View {
                 }
             }
             .id("Default Layout")
+
+            Section("Workspace Switching") {
+                Toggle(
+                    "Go Back When Switching to the Current Workspace",
+                    isOn: Bindable(settings.workspaces).autoBackAndForth
+                )
+                SettingsCaption(localized:
+                    "A workspace shortcut or command palette entry for the workspace you are on returns to the previous workspace instead. omniwmctl is not affected."
+                )
+            }
 
             Section {
                 if settings.workspaces.configurations.isEmpty {

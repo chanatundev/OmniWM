@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -112,6 +112,16 @@ extension DwindleLayoutEngine {
             state.pendingMovementFrameSeeds[token] = movementFrameSeed
         }
         return true
+    }
+
+    func seedMovementFramesFromPresentedLeaves(in state: DwindleWorkspaceState) {
+        let now = animationClock?.now() ?? CACurrentMediaTime()
+        for leaf in state.root.collectAllLeaves() {
+            guard let tile = leaf.tile, let frame = leaf.presentedFrame(at: now) else { continue }
+            for member in tile.members where state.pendingMovementFrameSeeds[member.token] == nil {
+                state.pendingMovementFrameSeeds[member.token] = frame
+            }
+        }
     }
 
     func consumePendingMovementFrameSeeds(

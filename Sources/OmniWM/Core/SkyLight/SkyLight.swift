@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -32,6 +32,7 @@ final class SkyLight {
     ) -> Void
 
     private var deferredWindowInfoConnection: WindowInfoConnection?
+    private var immediateWindowInfoConnection: WindowInfoConnection?
 
     private let capabilitySymbols: [String]
     let screencaptureSelectionExclusionKey = "IgnoreForScreencaptureWindowSelection" as CFString
@@ -63,23 +64,35 @@ final class SkyLight {
 
     func windowInfoConnection() -> WindowInfoConnection? {
         if deferredWindowInfoConnection == nil {
-            guard let newConnection = connections.newConnection,
-                  let releaseConnection = connections.releaseConnection else { return nil }
-            deferredWindowInfoConnection = WindowInfoConnection(
-                mainConnectionId: getMainConnectionID(),
-                create: {
-                    var cid: Int32 = 0
-                    let error = newConnection(0, &cid)
-                    return (error, cid)
-                },
-                release: { _ = releaseConnection($0) }
-            )
+            deferredWindowInfoConnection = makeWindowInfoConnection()
         }
         return deferredWindowInfoConnection
     }
 
+    func immediateQueryConnection() -> WindowInfoConnection? {
+        if immediateWindowInfoConnection == nil {
+            immediateWindowInfoConnection = makeWindowInfoConnection()
+        }
+        return immediateWindowInfoConnection
+    }
+
+    private func makeWindowInfoConnection() -> WindowInfoConnection? {
+        guard let newConnection = connections.newConnection,
+              let releaseConnection = connections.releaseConnection else { return nil }
+        return WindowInfoConnection(
+            mainConnectionId: getMainConnectionID(),
+            create: {
+                var cid: Int32 = 0
+                let error = newConnection(0, &cid)
+                return (error, cid)
+            },
+            release: { _ = releaseConnection($0) }
+        )
+    }
+
     func stopWindowInfoQueries() {
         deferredWindowInfoConnection = nil
+        immediateWindowInfoConnection = nil
     }
 
     final class WindowInfoConnection: Sendable {
@@ -110,15 +123,19 @@ final class SkyLight {
             _ read: @escaping @Sendable (Int32) -> Result?
         ) async throws -> Result? {
             try await SkyLight.performWindowInfoQuery { [self] in
-                connectionId.withLock { cid in
-                    if cid == nil {
-                        let (error, created) = create()
-                        guard error == .success, created != 0, created != mainConnectionId else { return nil }
-                        cid = created
-                    }
-                    guard let cid else { return nil }
-                    return read(cid)
+                performNow(read)
+            }
+        }
+
+        nonisolated func performNow<Result: Sendable>(_ read: (Int32) -> Result?) -> Result? {
+            connectionId.withLock { cid in
+                if cid == nil {
+                    let (error, created) = create()
+                    guard error == .success, created != 0, created != mainConnectionId else { return nil }
+                    cid = created
                 }
+                guard let cid else { return nil }
+                return read(cid)
             }
         }
     }
@@ -170,17 +187,19 @@ final class SkyLight {
         return scopedTransaction
     }
 
-    func withTransaction(_ ops: (CFTypeRef) -> Void) {
+    @discardableResult
+    func withTransaction(_ ops: (CFTypeRef) -> Void) -> Bool {
         if let transaction = activeScopedTransaction() {
             ops(transaction)
-            return
+            return true
         }
         guard let transaction = transactions.transactionCreate(getMainConnectionID())?.takeRetainedValue() else {
             FallbackFiringRecorder.shared.note(.skylight, "transactionCreateNil")
-            return
+            return false
         }
         ops(transaction)
         commit(transaction)
+        return true
     }
 
     enum TransactionSubmissionResult: Equatable, Sendable {

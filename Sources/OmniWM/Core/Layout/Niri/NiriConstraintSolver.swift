@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -23,8 +23,7 @@ enum NiriAxisSolver {
     }
 }
 
-struct NiriAxisSolveKey: Hashable {
-    let containerId: NodeId
+struct NiriAxisSolveKey: Equatable {
     let containerRevision: UInt64
     let configurationRevision: UInt64
     let availableSpace: CGFloat

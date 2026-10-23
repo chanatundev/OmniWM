@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import ApplicationServices
@@ -144,15 +144,6 @@ final class WindowRuleEngineTests: XCTestCase {
         XCTAssertNotEqual(main.source, .userRule(rule.id))
     }
 
-    func testEmptyBundleAxOnlyRuleIsDropped() {
-        let engine = WindowRuleEngine()
-        let axOnly = AppRule(bundleId: "", axSubrole: kAXStandardWindowSubrole as String, layout: .float)
-        engine.rebuild(rules: [axOnly])
-
-        let decision = evaluate(engine, facts(appName: "VMD", bundleId: nil, title: "VMD Main"))
-        XCTAssertNotEqual(decision.source, .userRule(axOnly.id))
-    }
-
     func testBundledAxSubroleRefinesMatch() {
         let engine = WindowRuleEngine()
         let rule = AppRule(
@@ -173,13 +164,21 @@ final class WindowRuleEngineTests: XCTestCase {
         XCTAssertNotEqual(wrongSubrole.source, .userRule(rule.id))
     }
 
-    func testEmptyBundleActionOnlyRuleIsDropped() {
-        let engine = WindowRuleEngine()
-        let actionOnly = AppRule(bundleId: "", layout: .float)
-        engine.rebuild(rules: [actionOnly])
-
-        let decision = evaluate(engine, facts(appName: "Anything", bundleId: nil))
-        XCTAssertNotEqual(decision.source, .userRule(actionOnly.id))
+    func testUnanchoredRuntimeRulesAreDropped() {
+        let cases: [(label: String, rule: AppRule, facts: WindowRuleFacts)] = [
+            ("action only", AppRule(bundleId: "", layout: .float), facts(appName: "Anything", bundleId: nil)),
+            (
+                "AX subrole only",
+                AppRule(bundleId: "", axSubrole: kAXStandardWindowSubrole as String, layout: .float),
+                facts(appName: "VMD", bundleId: nil, title: "VMD Main")
+            )
+        ]
+        for row in cases {
+            let engine = WindowRuleEngine()
+            engine.rebuild(rules: [row.rule])
+            let decision = evaluate(engine, row.facts)
+            XCTAssertNotEqual(decision.source, .userRule(row.rule.id), row.label)
+        }
     }
 
     func testBundledRuleDoesNotMatchNoBundleWindow() {
@@ -269,7 +268,7 @@ final class WindowRuleEngineTests: XCTestCase {
         XCTAssertEqual(decision.source, .builtInRule(WindowRuleEngine.externalSurfaceRuleName))
     }
 
-    func testMoreSpecificRuleWithoutInitialWidthShadowsGenericWidthRule() {
+    func testMoreSpecificRuleInheritsInitialSpanItDoesNotSet() {
         let engine = WindowRuleEngine()
         let generic = AppRule(bundleId: "com.test.app", initialContainerPrimarySpan: 0.5)
         let specific = AppRule(
@@ -284,7 +283,134 @@ final class WindowRuleEngineTests: XCTestCase {
             facts(appName: "Test", bundleId: "com.test.app", title: "Inspector")
         )
         XCTAssertEqual(decision.source, .userRule(specific.id))
-        XCTAssertNil(decision.admissionHints.initialNiriContainerPrimarySpan)
+        XCTAssertEqual(decision.admissionHints.initialNiriContainerPrimarySpan, 0.5)
+        XCTAssertEqual(
+            decision.ruleProvenance,
+            WindowRuleProvenance(layout: specific.id, initialContainerPrimarySpan: generic.id)
+        )
+    }
+
+    func testDefaultMinimumSizeRuleAndLaterWorkspaceRuleBothApply() {
+        let engine = WindowRuleEngine()
+        let defaults = BuiltInSettingsDefaults.appRules
+        guard let ghostty = defaults.first(where: { $0.bundleId == "com.mitchellh.ghostty" }) else {
+            return XCTFail("Missing the default Ghostty rule")
+        }
+        let workspaceRule = AppRule(bundleId: "com.mitchellh.ghostty", assignToWorkspace: "1")
+        engine.rebuild(rules: defaults + [workspaceRule])
+
+        let decision = evaluate(engine, facts(appName: "Ghostty", bundleId: "com.mitchellh.ghostty"))
+
+        XCTAssertEqual(decision.workspaceName, "1")
+        XCTAssertEqual(
+            decision.ruleEffects,
+            ManagedWindowRuleEffects(minWidth: ghostty.minWidth, minHeight: ghostty.minHeight)
+        )
+        XCTAssertEqual(
+            decision.ruleProvenance,
+            WindowRuleProvenance(workspace: workspaceRule.id, minWidth: ghostty.id, minHeight: ghostty.id)
+        )
+    }
+
+    func testEachSettingTakesTheMostSpecificThenEarliestRule() {
+        let engine = WindowRuleEngine()
+        let early = AppRule(bundleId: "com.test.app", assignToWorkspace: "1", minWidth: 300)
+        let late = AppRule(bundleId: "com.test.app", assignToWorkspace: "2", minHeight: 200)
+        let specific = AppRule(bundleId: "com.test.app", titleSubstring: "Editor", minWidth: 500)
+        engine.rebuild(rules: [early, late, specific])
+
+        let decision = evaluate(engine, facts(appName: "Test", bundleId: "com.test.app", title: "Editor"))
+
+        XCTAssertEqual(decision.source, .userRule(specific.id))
+        XCTAssertEqual(decision.workspaceName, "1")
+        XCTAssertEqual(decision.ruleEffects, ManagedWindowRuleEffects(minWidth: 500, minHeight: 200))
+        XCTAssertEqual(
+            decision.ruleProvenance,
+            WindowRuleProvenance(workspace: early.id, minWidth: specific.id, minHeight: late.id)
+        )
+    }
+
+    func testAutomaticRuleTakesLayoutFromAnotherMatchingRule() {
+        let engine = WindowRuleEngine()
+        let automatic = AppRule(bundleId: "com.test.app", titleSubstring: "Doc", minWidth: 400)
+        let floating = AppRule(bundleId: "com.test.app", layout: .float)
+        engine.rebuild(rules: [automatic, floating])
+
+        let decision = evaluate(engine, facts(appName: "Test", bundleId: "com.test.app", title: "Doc"))
+
+        XCTAssertEqual(decision.disposition, .floating)
+        XCTAssertEqual(decision.layoutDecisionKind, .explicitLayout)
+        XCTAssertEqual(decision.source, .userRule(floating.id))
+        XCTAssertEqual(decision.ruleEffects.minWidth, 400)
+        XCTAssertEqual(decision.ruleProvenance, WindowRuleProvenance(layout: floating.id, minWidth: automatic.id))
+    }
+
+    func testTitleScopedRuleJoinsCompositionOnceTheTitleMatches() {
+        let engine = WindowRuleEngine()
+        let bundleRule = AppRule(bundleId: "com.test.app", assignToWorkspace: "2")
+        let titleRule = AppRule(bundleId: "com.test.app", titleSubstring: "Doc", minWidth: 400)
+        engine.rebuild(rules: [bundleRule, titleRule])
+
+        let untitled = evaluate(engine, facts(appName: "Test", bundleId: "com.test.app"))
+        XCTAssertEqual(untitled.deferredReason, .requiredTitleMissing)
+        XCTAssertEqual(untitled.workspaceName, "2")
+        XCTAssertNil(untitled.ruleEffects.minWidth)
+
+        let titled = evaluate(engine, facts(appName: "Test", bundleId: "com.test.app", title: "Doc"))
+        XCTAssertEqual(titled.workspaceName, "2")
+        XCTAssertEqual(titled.ruleEffects.minWidth, 400)
+        XCTAssertEqual(titled.ruleProvenance, WindowRuleProvenance(workspace: bundleRule.id, minWidth: titleRule.id))
+    }
+
+    func testManualOverrideKeepsComposedEffectsAndDropsLayoutProvenance() {
+        let engine = WindowRuleEngine()
+        let floating = AppRule(bundleId: "com.test.app", layout: .float, assignToWorkspace: "2")
+        let sized = AppRule(bundleId: "com.test.app", titleSubstring: "Doc", minWidth: 400)
+        engine.rebuild(rules: [floating, sized])
+
+        let decision = WindowRuleEngine.applyingManualOverride(
+            evaluate(engine, facts(appName: "Test", bundleId: "com.test.app", title: "Doc")),
+            manualOverride: .forceTile
+        )
+
+        XCTAssertEqual(decision.disposition, .managed)
+        XCTAssertEqual(decision.source, .manualOverride)
+        XCTAssertEqual(decision.workspaceName, "2")
+        XCTAssertEqual(decision.ruleEffects.minWidth, 400)
+        XCTAssertEqual(decision.ruleProvenance, WindowRuleProvenance(workspace: floating.id, minWidth: sized.id))
+    }
+
+    func testDebugDumpNamesTheRuleBehindEachSetting() {
+        let workspaceRuleId = UUID()
+        let minWidthRuleId = UUID()
+        let snapshot = WindowDecisionDebugSnapshot(
+            token: nil,
+            appName: "Test",
+            bundleId: "com.test.app",
+            title: nil,
+            axRole: nil,
+            axSubrole: nil,
+            appFullscreen: false,
+            manualOverride: nil,
+            disposition: .managed,
+            source: .userRule(minWidthRuleId),
+            layoutDecisionKind: .fallbackLayout,
+            deferredReason: nil,
+            admissionOutcome: .trackedTiling,
+            workspaceName: "2",
+            minWidth: 400,
+            minHeight: nil,
+            initialNiriContainerPrimarySpan: nil,
+            ruleProvenance: WindowRuleProvenance(workspace: workspaceRuleId, minWidth: minWidthRuleId),
+            heuristicReasons: [],
+            attributeFetchSucceeded: true
+        )
+        let lines = Set(snapshot.formattedDump().split(separator: "\n").map(String.init))
+
+        XCTAssertTrue(lines.contains("workspaceRuleId=\(workspaceRuleId.uuidString)"))
+        XCTAssertTrue(lines.contains("minWidthRuleId=\(minWidthRuleId.uuidString)"))
+        XCTAssertTrue(lines.contains("minHeightRuleId=nil"))
+        XCTAssertTrue(lines.contains("layoutRuleId=nil"))
     }
 
     func testSystemTextInputPanelStaysUnmanagedWithWildcard() {
@@ -307,18 +433,11 @@ final class WindowRuleEngineTests: XCTestCase {
         engine.rebuild(rules: [rule])
 
         XCTAssertTrue(engine.requiresTitle(for: nil))
+        XCTAssertTrue(engine.requiresTitle(for: "example.app"))
 
         let decision = evaluate(engine, facts(appName: "VMD", bundleId: nil, title: "VMD Main"))
         XCTAssertEqual(decision.disposition, .floating)
         XCTAssertEqual(decision.source, .userRule(rule.id))
-    }
-
-    func testUnscopedTitleRuleFetchesTitleForBundledApp() {
-        let engine = WindowRuleEngine()
-        let rule = AppRule(bundleId: "", titleSubstring: "Main", layout: .float)
-        engine.rebuild(rules: [rule])
-
-        XCTAssertTrue(engine.requiresTitle(for: "example.app"))
     }
 
     func testAppNameScopedTitleRuleFetchesOnlyForMatchingApp() {
@@ -395,16 +514,17 @@ final class WindowRuleEngineTests: XCTestCase {
         )
     }
 
-    func testProjectionSnapshotValidWhenAnchoredOnAppName() {
-        let rule = AppRule(bundleId: "", appNameSubstring: "VMD", layout: .float)
-        let snapshot = IPCRuleProjection.snapshot(from: rule, position: 1, invalidRegexMessagesByRuleId: [:])
-        XCTAssertTrue(snapshot.isValid)
-    }
-
-    func testProjectionSnapshotInvalidWhenNoAnchor() {
-        let rule = AppRule(bundleId: "", layout: .float)
-        let snapshot = IPCRuleProjection.snapshot(from: rule, position: 1, invalidRegexMessagesByRuleId: [:])
-        XCTAssertFalse(snapshot.isValid)
+    func testRuleProjectionValidityMatrix() {
+        let cases: [(label: String, rule: AppRule, valid: Bool)] = [
+            ("anchored app name", AppRule(bundleId: "", appNameSubstring: "VMD", layout: .float), true),
+            ("no anchor", AppRule(bundleId: "", layout: .float), false),
+            ("effectless", AppRule(bundleId: "com.test.app", appNameSubstring: "Test"), false)
+        ]
+        for row in cases {
+            let snapshot = IPCRuleProjection.snapshot(from: row.rule, position: 1, invalidRegexMessagesByRuleId: [:])
+            XCTAssertEqual(snapshot.isValid, row.valid, row.label)
+            XCTAssertEqual(snapshot.validationMessages.isEmpty, row.valid, row.label)
+        }
     }
 
     func testEffectlessRuleDoesNotShadowEffectiveRule() {
@@ -418,13 +538,6 @@ final class WindowRuleEngineTests: XCTestCase {
         let decision = evaluate(engine, facts(appName: "Test", bundleId: "com.test.app"))
         XCTAssertEqual(decision.disposition, .floating)
         XCTAssertEqual(decision.source, .userRule(effective.id))
-    }
-
-    func testEffectlessRuleSnapshotIsInvalidWithMessage() {
-        let rule = AppRule(bundleId: "com.test.app", appNameSubstring: "Test")
-        let snapshot = IPCRuleProjection.snapshot(from: rule, position: 1, invalidRegexMessagesByRuleId: [:])
-        XCTAssertFalse(snapshot.isValid)
-        XCTAssertFalse(snapshot.validationMessages.isEmpty)
     }
 
     func testParentedSurfacesAreExternalAcrossBundles() {
@@ -675,8 +788,13 @@ final class WindowRuleEngineTests: XCTestCase {
             XCTAssertEqual(missingTitle.workspaceName, "2")
             XCTAssertEqual(missingTitle.ruleEffects, ManagedWindowRuleEffects(
                 minWidth: 420,
-                minHeight: 240,
-                matchedRuleId: rule.id
+                minHeight: 240
+            ))
+            XCTAssertEqual(missingTitle.ruleProvenance, WindowRuleProvenance(
+                workspace: rule.id,
+                minWidth: rule.id,
+                minHeight: rule.id,
+                initialContainerPrimarySpan: rule.id
             ))
             XCTAssertEqual(missingTitle.admissionHints.initialNiriContainerPrimarySpan, 0.42)
         }
@@ -901,6 +1019,45 @@ final class WindowRuleEngineTests: XCTestCase {
 
         XCTAssertEqual(preciseDecision.disposition, .floating)
         XCTAssertEqual(preciseDecision.source, .userRule(preciseRule.id))
+    }
+
+    func testExplicitInclusionComposesOnlyAmongIncludingRules() {
+        let token = WindowToken(pid: 84_073, windowId: 84_074)
+        let rootFacts = transientFacts(
+            bundleId: "org.example.widget-host",
+            windowServer: transientWindowServerInfo(token: token, parentId: 0)
+        )
+        let broad = AppRule(bundleId: "org.example.widget-host", assignToWorkspace: "3", minWidth: 500)
+        let precise = AppRule(
+            bundleId: "org.example.widget-host",
+            axRole: kAXWindowRole as String,
+            axSubrole: kAXUnknownSubrole as String,
+            layout: .float
+        )
+        let engine = WindowRuleEngine()
+        engine.rebuild(rules: [broad, precise])
+        let decision = evaluate(engine, rootFacts, token: token)
+
+        XCTAssertEqual(decision.disposition, .floating)
+        XCTAssertEqual(decision.source, .userRule(precise.id))
+        XCTAssertNil(decision.workspaceName)
+        XCTAssertEqual(decision.ruleEffects, .none)
+        XCTAssertEqual(decision.ruleProvenance, WindowRuleProvenance(layout: precise.id))
+
+        let splitEngine = WindowRuleEngine()
+        splitEngine.rebuild(rules: [
+            AppRule(
+                bundleId: "org.example.widget-host",
+                axRole: kAXWindowRole as String,
+                axSubrole: kAXUnknownSubrole as String,
+                minWidth: 300
+            ),
+            AppRule(bundleId: "org.example.widget-host", layout: .float)
+        ])
+        let splitDecision = evaluate(splitEngine, rootFacts, token: token)
+
+        XCTAssertEqual(splitDecision.disposition, .unmanaged)
+        XCTAssertEqual(splitDecision.source, .builtInRule(WindowRuleEngine.externalSurfaceRuleName))
     }
 
     func testIncompleteFactsCannotBeAdmittedByRulesOrManualOverrides() {

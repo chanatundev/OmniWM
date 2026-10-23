@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 @testable import OmniWM
@@ -283,6 +283,8 @@ final class ShellProviderRuntimeTests: XCTestCase {
         }
         let ready = expectation(description: "flood fixture actual startup")
         let terminated = expectation(description: "supervisor terminated the overflowing provider")
+        ready.assertForOverFulfill = false
+        terminated.assertForOverFulfill = false
         try await withHarness(consuming: false, diagnostic: { line in
             if line == "fixture:ready:A" { ready.fulfill() }
             if line == "fixture:closed:A" { terminated.fulfill() }

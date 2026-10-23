@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -45,24 +45,6 @@ enum SettingsSearchIndex {
             title: String(localized: title),
             route: SettingsRoute(section: section, tab: tab, anchor: anchor, itemID: itemID)
         )
-    }
-
-    private static func aliases(for section: SettingsSection) -> [String] {
-        switch section {
-        case .general: ["language", "startup", "login", "updates"]
-        case .appearance: ["theme", "dark", "light", "animations", "corners", "borders", "glow"]
-        case .styles: ["shell", "profile", "preset", "palette", "theme", "wallpaper"]
-        case .bar: ["shell", "custom bar", "workspace bar", "widgets"]
-        case .island: ["shell", "dynamic island", "lake", "focus ribbon", "components"]
-        case .widgets: ["shell", "widget", "clock", "calendar", "weather", "media", "volume", "drawer"]
-        case .menuBar: ["status bar", "hidden bar", "menu bar", "icons"]
-        case .layouts: ["spacing", "gaps", "margins", "niri", "dwindle", "columns", "tiling"]
-        case .monitors: ["monitors", "displays", "screens", "routing"]
-        case .appRules: ["app rules", "float", "tile", "bundle", "match"]
-        case .hotkeys: ["hotkeys", "keyboard", "shortcuts", "hyper", "commands"]
-        case .advanced: ["config", "toml", "luau", "ipc", "cli", "terminal"]
-        default: [section.rawValue]
-        }
     }
 
     private static let settings: [SettingsSearchEntry] = [
@@ -214,11 +196,19 @@ enum SettingsSearchIndex {
         setting("Mouse Move & Resize", section: .mouseTrackpad, tab: "mouse", anchor: "Mouse Move & Resize"),
         setting("Left Mouse Move Modifier", section: .mouseTrackpad, tab: "mouse", anchor: "Left Mouse Move Modifier"),
         setting(
+            "Dwindle Group Across Displays",
+            section: .mouseTrackpad,
+            tab: "mouse",
+            anchor: "Dwindle Group Across Displays"
+        ),
+        setting(
             "Right Mouse Resize Modifier",
             section: .mouseTrackpad,
             tab: "mouse",
             anchor: "Right Mouse Resize Modifier"
         ),
+        setting("Resize Preview", section: .mouseTrackpad, tab: "mouse", anchor: "Resize Preview"),
+        setting("Keep Native Edge Resizes", section: .mouseTrackpad, tab: "mouse", anchor: "Keep Native Edge Resizes"),
         setting("Focus Follows Mouse", section: .mouseTrackpad, tab: "mouse", anchor: "Focus Follows Mouse"),
         setting(
             "Enable Focus Follows Mouse",
@@ -233,6 +223,7 @@ enum SettingsSearchIndex {
             anchor: "Raise Window When Focus Follows Mouse"
         ),
         setting("Focus Lock Modifier", section: .mouseTrackpad, tab: "mouse", anchor: "Focus Lock Modifier"),
+        setting("Edge navigation interval", section: .mouseTrackpad, tab: "mouse", anchor: "Edge navigation interval"),
         setting("Quake Terminal", section: .quakeTerminal, anchor: "Quake Terminal"),
         setting("Enable Quake Terminal", section: .quakeTerminal, anchor: "Enable Quake Terminal"),
         setting("Position & Size", section: .quakeTerminal, anchor: "Position & Size"),
@@ -318,4 +309,25 @@ enum SettingsSearchIndex {
         setting("IPC", section: .advanced, anchor: "Automation"),
         setting("Command-Line Tools", section: .advanced, anchor: "Command-Line Tools")
     ]
+}
+
+extension SettingsSearchIndex {
+    private static func aliases(for section: SettingsSection) -> [String] {
+        switch section {
+        case .general: ["language", "startup", "login", "updates"]
+        case .appearance: ["theme", "dark", "light", "animations", "corners", "borders", "glow"]
+        case .styles: ["shell", "profile", "preset", "palette", "theme", "wallpaper"]
+        case .bar: ["shell", "custom bar", "workspace bar", "widgets"]
+        case .island: ["shell", "dynamic island", "lake", "focus ribbon", "components"]
+        case .widgets: ["shell", "widget", "clock", "calendar", "weather", "media", "volume", "drawer"]
+        case .menuBar: ["status bar", "hidden bar", "menu bar", "icons"]
+        case .layouts: ["spacing", "gaps", "margins", "niri", "dwindle", "columns", "tiling"]
+        case .monitors: ["monitors", "displays", "screens", "routing"]
+        case .appRules: ["app rules", "float", "tile", "bundle", "match"]
+        case .windowSwitcher: ["alt-tab", "command-tab", "option-tab", "app switcher", "previews"]
+        case .hotkeys: ["hotkeys", "keyboard", "shortcuts", "hyper", "commands", "pause", "prefix", "mode key"]
+        case .advanced: ["config", "toml", "luau", "ipc", "cli", "terminal"]
+        default: [section.rawValue]
+        }
+    }
 }

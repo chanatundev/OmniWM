@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import OmniWMIPC
@@ -66,6 +66,7 @@ extension ShellBarStyle {
             textColor: hex(resolved.textColor),
             statsButton: resolved.systemStatsButton,
             secureInput: snapshot.secureInputActive,
+            keyboardMode: snapshot.keyboardMode.rawValue,
             previews: settings.resolvedHoverPreviewsEnabled,
             hideInFullscreen: settings.resolvedHideInNativeFullscreen
         )

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 @testable import OmniWM
@@ -134,14 +134,10 @@ final class NiriInteractionOwnershipTests: NiriInteractionTestCase {
                 state: &stateA
             )
         )
-        let hoverTarget = try XCTUnwrap(
-            engine.interactiveMoveUpdate(currentLocation: targetFrame.center)
+        XCTAssertEqual(
+            engine.interactiveMoveUpdate(currentLocation: targetFrame.center),
+            MoveHoverTarget(nodeId: target.id, token: target.token, direction: nil)
         )
-        guard case let .window(nodeId, _, insertPosition) = hoverTarget else {
-            return XCTFail("Expected a window hover target")
-        }
-        XCTAssertEqual(nodeId, target.id)
-        XCTAssertEqual(insertPosition, .swap)
         XCTAssertTrue(
             engine.interactiveMoveEnd(
                 at: targetFrame.center,
@@ -354,34 +350,26 @@ final class NiriInteractionLifecycleTests: NiriInteractionTestCase {
         XCTAssertFalse(beginMove(engine, window: window, in: workspace))
     }
 
-    func testWorkspaceRemovalClearsMoveAndPermitsMoveInAnotherWorkspace() {
-        let engine = NiriLayoutEngine()
-        let workspaceA = WorkspaceDescriptor.ID()
-        let workspaceB = WorkspaceDescriptor.ID()
-        let source = addWindow(engine, pid: 1_005, to: workspaceA)
-        let next = addWindow(engine, pid: 1_006, to: workspaceB)
-        XCTAssertTrue(beginMove(engine, window: source, in: workspaceA))
-        XCTAssertFalse(beginMove(engine, window: next, in: workspaceB))
+    func testWorkspaceRemovalClearsInteractionAndPermitsAnotherWorkspace() {
+        for (resizing, sourcePID, nextPID) in [(false, 1_005, 1_006), (true, 1_007, 1_008)] {
+            let engine = NiriLayoutEngine()
+            let workspaceA = WorkspaceDescriptor.ID()
+            let workspaceB = WorkspaceDescriptor.ID()
+            let begin: (NiriWindow, WorkspaceDescriptor.ID) -> Bool = { window, workspace in
+                resizing
+                    ? self.beginResize(engine, window: window, in: workspace)
+                    : self.beginMove(engine, window: window, in: workspace)
+            }
+            let source = addWindow(engine, pid: pid_t(sourcePID), to: workspaceA)
+            let next = addWindow(engine, pid: pid_t(nextPID), to: workspaceB)
+            XCTAssertTrue(begin(source, workspaceA))
+            XCTAssertFalse(begin(next, workspaceB))
 
-        engine.removeWorkspaceState(workspaceA)
+            engine.removeWorkspaceState(workspaceA)
 
-        XCTAssertNil(engine.interactiveMove)
-        XCTAssertTrue(beginMove(engine, window: next, in: workspaceB))
-    }
-
-    func testWorkspaceRemovalClearsResizeAndPermitsResizeInAnotherWorkspace() {
-        let engine = NiriLayoutEngine()
-        let workspaceA = WorkspaceDescriptor.ID()
-        let workspaceB = WorkspaceDescriptor.ID()
-        let source = addWindow(engine, pid: 1_007, to: workspaceA)
-        let next = addWindow(engine, pid: 1_008, to: workspaceB)
-        XCTAssertTrue(beginResize(engine, window: source, in: workspaceA))
-        XCTAssertFalse(beginResize(engine, window: next, in: workspaceB))
-
-        engine.removeWorkspaceState(workspaceA)
-
-        XCTAssertNil(engine.interactiveResize)
-        XCTAssertTrue(beginResize(engine, window: next, in: workspaceB))
+            XCTAssertTrue(resizing ? engine.interactiveResize == nil : engine.interactiveMove == nil)
+            XCTAssertTrue(begin(next, workspaceB))
+        }
     }
 
     func testSimpleRemovalClearsOnlyMatchingMoveAndResizeSessions() {
@@ -426,96 +414,64 @@ final class NiriInteractionLifecycleTests: NiriInteractionTestCase {
         XCTAssertNil(resizeEngine.interactiveResize)
     }
 
-    func testWindowTransferClearsMatchingMoveSession() {
-        let engine = NiriLayoutEngine()
-        let workspaceA = WorkspaceDescriptor.ID()
-        let workspaceB = WorkspaceDescriptor.ID()
-        let source = addWindow(engine, pid: 1_015, to: workspaceA)
-        _ = addWindow(engine, pid: 1_015, windowId: 2, to: workspaceA, after: source)
-        XCTAssertTrue(beginMove(engine, window: source, in: workspaceA))
-        var sourceState = ViewportState()
-        var targetState = ViewportState()
+    func testWindowTransferClearsMatchingInteraction() {
+        for (resizing, sourcePID) in [(false, 1_015), (true, 1_016)] {
+            let engine = NiriLayoutEngine()
+            let workspaceA = WorkspaceDescriptor.ID()
+            let workspaceB = WorkspaceDescriptor.ID()
+            let begin: (NiriWindow, WorkspaceDescriptor.ID) -> Bool = { window, workspace in
+                resizing
+                    ? self.beginResize(engine, window: window, in: workspace)
+                    : self.beginMove(engine, window: window, in: workspace)
+            }
+            let source = addWindow(engine, pid: pid_t(sourcePID), to: workspaceA)
+            _ = addWindow(engine, pid: pid_t(sourcePID), windowId: 2, to: workspaceA, after: source)
+            XCTAssertTrue(begin(source, workspaceA))
+            var sourceState = ViewportState()
+            var targetState = ViewportState()
 
-        XCTAssertNotNil(
-            engine.moveWindowToWorkspace(
-                source,
-                from: workspaceA,
-                to: workspaceB,
-                sourceState: &sourceState,
-                targetState: &targetState
+            XCTAssertNotNil(
+                engine.moveWindowToWorkspace(
+                    source,
+                    from: workspaceA,
+                    to: workspaceB,
+                    sourceState: &sourceState,
+                    targetState: &targetState
+                )
             )
-        )
-        XCTAssertNil(engine.interactiveMove)
-        XCTAssertTrue(beginMove(engine, window: source, in: workspaceB))
+            XCTAssertTrue(resizing ? engine.interactiveResize == nil : engine.interactiveMove == nil)
+            XCTAssertTrue(begin(source, workspaceB))
+        }
     }
 
-    func testWindowTransferClearsMatchingResizeSession() {
-        let engine = NiriLayoutEngine()
-        let workspaceA = WorkspaceDescriptor.ID()
-        let workspaceB = WorkspaceDescriptor.ID()
-        let source = addWindow(engine, pid: 1_016, to: workspaceA)
-        _ = addWindow(engine, pid: 1_016, windowId: 2, to: workspaceA, after: source)
-        XCTAssertTrue(beginResize(engine, window: source, in: workspaceA))
-        var sourceState = ViewportState()
-        var targetState = ViewportState()
+    func testColumnTransferClearsMatchingInteraction() throws {
+        for (resizing, sourcePID) in [(false, 1_017), (true, 1_018)] {
+            let engine = NiriLayoutEngine()
+            let workspaceA = WorkspaceDescriptor.ID()
+            let workspaceB = WorkspaceDescriptor.ID()
+            let begin: (NiriWindow, WorkspaceDescriptor.ID) -> Bool = { window, workspace in
+                resizing
+                    ? self.beginResize(engine, window: window, in: workspace)
+                    : self.beginMove(engine, window: window, in: workspace)
+            }
+            let source = addWindow(engine, pid: pid_t(sourcePID), to: workspaceA)
+            let column = try XCTUnwrap(engine.columns(in: workspaceA).first)
+            XCTAssertTrue(begin(source, workspaceA))
+            var sourceState = ViewportState()
+            var targetState = ViewportState()
 
-        XCTAssertNotNil(
-            engine.moveWindowToWorkspace(
-                source,
-                from: workspaceA,
-                to: workspaceB,
-                sourceState: &sourceState,
-                targetState: &targetState
+            XCTAssertNotNil(
+                engine.moveColumnToWorkspace(
+                    column,
+                    from: workspaceA,
+                    to: NiriWorkspaceDestination(workspaceId: workspaceB, orientation: .horizontal),
+                    sourceState: &sourceState,
+                    targetState: &targetState
+                )
             )
-        )
-        XCTAssertNil(engine.interactiveResize)
-        XCTAssertTrue(beginResize(engine, window: source, in: workspaceB))
-    }
-
-    func testColumnTransferClearsMatchingMoveSession() throws {
-        let engine = NiriLayoutEngine()
-        let workspaceA = WorkspaceDescriptor.ID()
-        let workspaceB = WorkspaceDescriptor.ID()
-        let source = addWindow(engine, pid: 1_017, to: workspaceA)
-        let column = try XCTUnwrap(engine.columns(in: workspaceA).first)
-        XCTAssertTrue(beginMove(engine, window: source, in: workspaceA))
-        var sourceState = ViewportState()
-        var targetState = ViewportState()
-
-        XCTAssertNotNil(
-            engine.moveColumnToWorkspace(
-                column,
-                from: workspaceA,
-                to: NiriWorkspaceDestination(workspaceId: workspaceB, orientation: .horizontal),
-                sourceState: &sourceState,
-                targetState: &targetState
-            )
-        )
-        XCTAssertNil(engine.interactiveMove)
-        XCTAssertTrue(beginMove(engine, window: source, in: workspaceB))
-    }
-
-    func testColumnTransferClearsMatchingResizeSession() throws {
-        let engine = NiriLayoutEngine()
-        let workspaceA = WorkspaceDescriptor.ID()
-        let workspaceB = WorkspaceDescriptor.ID()
-        let source = addWindow(engine, pid: 1_018, to: workspaceA)
-        let column = try XCTUnwrap(engine.columns(in: workspaceA).first)
-        XCTAssertTrue(beginResize(engine, window: source, in: workspaceA))
-        var sourceState = ViewportState()
-        var targetState = ViewportState()
-
-        XCTAssertNotNil(
-            engine.moveColumnToWorkspace(
-                column,
-                from: workspaceA,
-                to: NiriWorkspaceDestination(workspaceId: workspaceB, orientation: .horizontal),
-                sourceState: &sourceState,
-                targetState: &targetState
-            )
-        )
-        XCTAssertNil(engine.interactiveResize)
-        XCTAssertTrue(beginResize(engine, window: source, in: workspaceB))
+            XCTAssertTrue(resizing ? engine.interactiveResize == nil : engine.interactiveMove == nil)
+            XCTAssertTrue(begin(source, workspaceB))
+        }
     }
 
     func testSuccessfulRestoreCancelsMoveAndResizeButNoOpRestorePreservesThem() {
@@ -607,43 +563,6 @@ final class NiriInteractionOrientationTests: NiriInteractionTestCase {
         XCTAssertEqual(state.viewOffset, -25, accuracy: 0.001)
     }
 
-    func testHorizontalBeforeInsertionPreviewStaysBeforeTarget() throws {
-        let engine = NiriLayoutEngine()
-        let workspaceId = WorkspaceDescriptor.ID()
-        let first = addWindow(engine, pid: 1_035, to: workspaceId)
-        let second = addWindow(engine, pid: 1_035, windowId: 2, to: workspaceId, after: first)
-        let column = try XCTUnwrap(engine.findColumn(containing: first, in: workspaceId))
-        var state = ViewportState()
-        XCTAssertTrue(
-            engine.consumeWindow(
-                second,
-                into: column,
-                enteringFrom: .down,
-                context: .init(
-                    workspaceId: workspaceId,
-                    motion: .disabled,
-                    workingFrame: workingFrame,
-                    gaps: 0,
-                    orientation: .horizontal
-                ),
-                state: &state
-            )
-        )
-        let frames = layout(engine, in: workspaceId, state: state)
-        let targetFrame = try XCTUnwrap(frames[first.token])
-        let dropFrame = try XCTUnwrap(
-            engine.insertionDropzoneFrame(
-                targetWindowId: first.id,
-                position: .before,
-                in: workspaceId,
-                gaps: 0,
-                orientation: .horizontal
-            )
-        )
-
-        XCTAssertEqual(dropFrame.minY, targetFrame.minY, accuracy: 0.001)
-    }
-
     func testPortraitInteractiveInsertKeepsBeginOrientationWhenMonitorChanges() throws {
         let engine = NiriLayoutEngine()
         let workspaceId = WorkspaceDescriptor.ID()
@@ -677,7 +596,7 @@ final class NiriInteractionOrientationTests: NiriInteractionTestCase {
                 windowId: source.id,
                 windowToken: source.token,
                 startLocation: sourceFrame.center,
-                isInsertMode: true,
+                allowsInsertion: true,
                 context: .init(
                     workspaceId: workspaceId,
                     motion: .disabled,
@@ -693,27 +612,14 @@ final class NiriInteractionOrientationTests: NiriInteractionTestCase {
             x: targetFrame.minX + targetFrame.width * 0.25,
             y: targetFrame.midY
         )
-        let hoverTarget = try XCTUnwrap(
-            engine.interactiveMoveUpdate(currentLocation: beforeLocation)
+        XCTAssertEqual(
+            engine.interactiveMoveUpdate(currentLocation: beforeLocation),
+            MoveHoverTarget(nodeId: target.id, token: target.token, direction: .left)
         )
-        guard case let .window(nodeId, _, insertPosition) = hoverTarget else {
-            return XCTFail("Expected a window hover target")
-        }
-        XCTAssertEqual(nodeId, target.id)
-        XCTAssertEqual(insertPosition, .before)
-
-        let dropFrame = try XCTUnwrap(
-            engine.insertionDropzoneFrame(
-                targetWindowId: target.id,
-                position: insertPosition,
-                in: workspaceId,
-                gaps: 0,
-                orientation: .vertical
-            )
+        XCTAssertEqual(
+            engine.interactiveMoveTargetFrame(),
+            targetFrame.divided(atDistance: targetFrame.width / 2, from: .minXEdge).slice
         )
-        XCTAssertEqual(dropFrame.height, targetFrame.height, accuracy: 0.001)
-        XCTAssertLessThan(dropFrame.width, targetFrame.width)
-        XCTAssertEqual(dropFrame.minX, targetFrame.minX, accuracy: 0.001)
 
         engine.updateMonitorOrientations([monitor.id: .horizontal])
         XCTAssertEqual(engine.monitor(for: monitor.id)?.orientation, .horizontal)
@@ -737,6 +643,161 @@ final class NiriInteractionOrientationTests: NiriInteractionTestCase {
         XCTAssertLessThan(
             try XCTUnwrap(movedFrames[source.token]).midX,
             try XCTUnwrap(movedFrames[target.token]).midX
+        )
+    }
+
+    func testPortraitColumnEdgesOpenAColumnOnThatSideOfTheTarget() throws {
+        let monitor = Monitor(
+            id: .init(displayId: 41_033),
+            displayId: 41_033,
+            frame: workingFrame,
+            visibleFrame: workingFrame,
+            hasNotch: false,
+            name: "Portrait Column Edges"
+        )
+        for dropsOnFarEdge in [true, false] {
+            let engine = NiriLayoutEngine()
+            let workspaceId = WorkspaceDescriptor.ID()
+            engine.syncWorkspaceAssignments(
+                [(workspaceId: workspaceId, monitor: monitor)],
+                orientations: [monitor.id: .vertical]
+            )
+            let source = addWindow(engine, pid: 1_033, to: workspaceId)
+            let target = addWindow(engine, pid: 1_033, windowId: 2, to: workspaceId, after: source)
+            var state = ViewportState()
+            let frames = portraitLayout(engine, in: workspaceId, state: state)
+            let sourceFrame = try XCTUnwrap(frames[source.token])
+            let targetFrame = try XCTUnwrap(frames[target.token])
+            let sourceIsBelow = sourceFrame.midY < targetFrame.midY
+            let farEdgeIsTop = sourceIsBelow
+            let dropsOnTop = dropsOnFarEdge == farEdgeIsTop
+            let edgeInset = targetFrame.height * 0.1
+            let drop = CGPoint(
+                x: targetFrame.midX,
+                y: dropsOnTop ? targetFrame.maxY - edgeInset : targetFrame.minY + edgeInset
+            )
+            XCTAssertTrue(
+                engine.interactiveMoveBegin(
+                    windowId: source.id,
+                    windowToken: source.token,
+                    startLocation: sourceFrame.center,
+                    allowsInsertion: true,
+                    context: .init(
+                        workspaceId: workspaceId,
+                        motion: .disabled,
+                        workingFrame: workingFrame,
+                        gaps: 0,
+                        orientation: .vertical
+                    ),
+                    state: &state
+                )
+            )
+            XCTAssertEqual(engine.interactiveMoveUpdate(currentLocation: drop)?.direction, dropsOnTop ? .up : .down)
+
+            let moved = engine.interactiveMoveEnd(
+                at: drop,
+                motion: .disabled,
+                state: &state,
+                workingFrame: workingFrame,
+                gaps: 0
+            )
+
+            XCTAssertEqual(moved, dropsOnFarEdge)
+            XCTAssertEqual(engine.columns(in: workspaceId).count, 2)
+            let movedFrames = portraitLayout(engine, in: workspaceId, state: state)
+            let sourceMidY = try XCTUnwrap(movedFrames[source.token]).midY
+            let targetMidY = try XCTUnwrap(movedFrames[target.token]).midY
+            XCTAssertEqual(sourceMidY > targetMidY, dropsOnFarEdge ? dropsOnTop : !sourceIsBelow)
+        }
+    }
+
+    func testMoveTargetsOnlyTheVisibleTabOfATabbedColumn() throws {
+        let engine = NiriLayoutEngine()
+        let workspaceId = WorkspaceDescriptor.ID()
+        let source = addWindow(engine, pid: 1_036, to: workspaceId)
+        let hidden = addWindow(engine, pid: 1_036, windowId: 2, to: workspaceId, after: source)
+        let visible = addWindow(engine, pid: 1_036, windowId: 3, to: workspaceId, after: hidden)
+        let column = try XCTUnwrap(engine.findColumn(containing: hidden, in: workspaceId))
+        let visibleColumn = try XCTUnwrap(engine.findColumn(containing: visible, in: workspaceId))
+        visible.detach()
+        visibleColumn.remove()
+        column.appendChild(visible)
+        column.displayMode = .tabbed
+        column.setActiveTileIdx(1)
+        engine.updateTabbedColumnVisibility(column: column)
+        let frames = layout(engine, in: workspaceId)
+        let point = try XCTUnwrap(frames[visible.token]).center
+        XCTAssertTrue(try XCTUnwrap(hidden.renderedFrame ?? hidden.frame).contains(point))
+
+        XCTAssertTrue(beginMove(engine, window: source, in: workspaceId))
+
+        XCTAssertEqual(engine.interactiveMoveUpdate(currentLocation: point)?.token, visible.token)
+    }
+
+    func testStackDropIntoATabbedColumnShowsTheDroppedWindow() throws {
+        let engine = NiriLayoutEngine()
+        let workspaceId = WorkspaceDescriptor.ID()
+        let source = addWindow(engine, pid: 1_037, to: workspaceId)
+        let active = addWindow(engine, pid: 1_037, windowId: 2, to: workspaceId, after: source)
+        let hidden = addWindow(engine, pid: 1_037, windowId: 3, to: workspaceId, after: active)
+        let column = try XCTUnwrap(engine.findColumn(containing: active, in: workspaceId))
+        let hiddenColumn = try XCTUnwrap(engine.findColumn(containing: hidden, in: workspaceId))
+        hidden.detach()
+        hiddenColumn.remove()
+        column.appendChild(hidden)
+        column.displayMode = .tabbed
+        column.setActiveTileIdx(0)
+        engine.updateTabbedColumnVisibility(column: column)
+        var state = ViewportState()
+        let frames = layout(engine, in: workspaceId, state: state)
+        let targetFrame = try XCTUnwrap(frames[active.token])
+        let drop = CGPoint(x: targetFrame.midX, y: targetFrame.maxY - targetFrame.height * 0.1)
+        XCTAssertTrue(
+            engine.interactiveMoveBegin(
+                windowId: source.id,
+                windowToken: source.token,
+                startLocation: try XCTUnwrap(frames[source.token]).center,
+                allowsInsertion: true,
+                context: .init(
+                    workspaceId: workspaceId,
+                    motion: .disabled,
+                    workingFrame: workingFrame,
+                    gaps: 0,
+                    orientation: .horizontal
+                ),
+                state: &state
+            )
+        )
+        XCTAssertEqual(engine.interactiveMoveUpdate(currentLocation: drop)?.direction, .up)
+
+        XCTAssertTrue(
+            engine.interactiveMoveEnd(at: drop, motion: .disabled, state: &state, workingFrame: workingFrame, gaps: 0)
+        )
+
+        XCTAssertEqual(column.windowNodes.map(\.token), [active.token, source.token, hidden.token])
+        XCTAssertTrue(engine.isProjectedFocusableWindow(source, in: workspaceId))
+        let result = engine.calculateLayoutWithVisibility(
+            state: state,
+            workspaceId: workspaceId,
+            monitorFrame: workingFrame,
+            gaps: (horizontal: 0, vertical: 0),
+            orientation: .horizontal
+        )
+        XCTAssertNil(result.hiddenHandles[source.token])
+        XCTAssertNotNil(result.hiddenHandles[active.token])
+    }
+
+    private func portraitLayout(
+        _ engine: NiriLayoutEngine,
+        in workspaceId: WorkspaceDescriptor.ID,
+        state: ViewportState
+    ) -> [WindowToken: CGRect] {
+        engine.calculateLayout(
+            state: state,
+            workspaceId: workspaceId,
+            monitorFrame: workingFrame,
+            gaps: (horizontal: 0, vertical: 0),
+            orientation: .vertical
         )
     }
 

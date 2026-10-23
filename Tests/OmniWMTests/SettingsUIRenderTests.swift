@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 @testable import OmniWM
@@ -375,6 +375,7 @@ final class SettingsUIRenderTests: XCTestCase {
         case .monitors: String(localized: "Arrangement")
         case .appRules: String(localized: "Add Rule")
         case .overview: String(localized: "Enable Overview")
+        case .windowSwitcher: String(localized: "Enable Window Switcher")
         case .hotkeys: String(localized: "System Hyper Trigger")
         case .mouseTrackpad: String(localized: "Trackpad")
         case .quakeTerminal: String(localized: "Enable Quake Terminal")

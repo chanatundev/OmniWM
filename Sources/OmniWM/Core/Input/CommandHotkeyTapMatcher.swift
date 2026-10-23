@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Carbon
@@ -36,6 +36,22 @@ struct ModifierFlagMask {
             right: UInt64(NX_DEVICERCMDKEYMASK)
         )
     ]
+
+    static func independentFlags(carbon modifiers: UInt32) -> UInt64 {
+        var flags: UInt64 = 0
+        for mask in all where modifiers & mask.carbon != 0 {
+            flags |= mask.independent
+        }
+        return flags
+    }
+
+    static func carbonModifiers(independent flags: UInt64) -> UInt32 {
+        var modifiers: UInt32 = 0
+        for mask in all where flags & mask.independent != 0 {
+            modifiers |= mask.carbon
+        }
+        return modifiers
+    }
 }
 
 enum CommandHotkeyTapMatcher {
@@ -45,7 +61,14 @@ enum CommandHotkeyTapMatcher {
     }
 
     static func match(keyCode: UInt32, rawFlags: UInt64, entries: [Entry]) -> HotkeyCommand? {
-        entries.first { matches($0.binding, keyCode: keyCode, rawFlags: rawFlags) }?.command
+        firstMatch(keyCode: keyCode, rawFlags: rawFlags, entries: entries)?.command
+    }
+
+    static func firstMatch(keyCode: UInt32, rawFlags: UInt64, entries: [Entry]) -> Entry? {
+        for entry in entries where matches(entry.binding, keyCode: keyCode, rawFlags: rawFlags) {
+            return entry
+        }
+        return nil
     }
 
     static func nearMiss(keyCode: UInt32, rawFlags: UInt64, entries: [Entry]) -> (entry: Entry, reason: String)? {
@@ -57,25 +80,43 @@ enum CommandHotkeyTapMatcher {
         return nil
     }
 
+    private enum Rejection: Equatable {
+        case keyCode
+        case missing(UInt32)
+        case extra(UInt32)
+        case left(UInt32)
+        case right(UInt32)
+    }
+
     static func matches(_ binding: KeyBinding, keyCode: UInt32, rawFlags: UInt64) -> Bool {
-        rejectionReason(binding, keyCode: keyCode, rawFlags: rawFlags) == nil
+        rejection(binding, keyCode: keyCode, rawFlags: rawFlags) == nil
     }
 
     static func rejectionReason(_ binding: KeyBinding, keyCode: UInt32, rawFlags: UInt64) -> String? {
-        guard binding.keyCode == keyCode else { return "keyCode" }
+        switch rejection(binding, keyCode: keyCode, rawFlags: rawFlags) {
+        case .keyCode: return "keyCode"
+        case let .missing(mask): return "needs \(KeySymbolMapper.modifierSymbols(mask))"
+        case let .extra(mask): return "extra \(KeySymbolMapper.modifierSymbols(mask))"
+        case let .left(mask): return "needs L\(KeySymbolMapper.modifierSymbols(mask))"
+        case let .right(mask): return "needs R\(KeySymbolMapper.modifierSymbols(mask))"
+        case nil: return nil
+        }
+    }
+
+    private static func rejection(_ binding: KeyBinding, keyCode: UInt32, rawFlags: UInt64) -> Rejection? {
+        guard binding.keyCode == keyCode else { return .keyCode }
         for mask in ModifierFlagMask.all {
-            let symbol = KeySymbolMapper.modifierSymbols(mask.carbon)
             let required = binding.modifiers & mask.carbon != 0
             let down = rawFlags & mask.independent != 0
-            guard required == down else { return required ? "needs \(symbol)" : "extra \(symbol)" }
+            guard required == down else { return required ? .missing(mask.carbon) : .extra(mask.carbon) }
             guard required else { continue }
             switch binding.sidedModifiers.side(for: mask.carbon) {
             case .either:
                 continue
             case .left:
-                guard rawFlags & mask.left != 0, rawFlags & mask.right == 0 else { return "needs L\(symbol)" }
+                guard rawFlags & mask.left != 0, rawFlags & mask.right == 0 else { return .left(mask.carbon) }
             case .right:
-                guard rawFlags & mask.right != 0, rawFlags & mask.left == 0 else { return "needs R\(symbol)" }
+                guard rawFlags & mask.right != 0, rawFlags & mask.left == 0 else { return .right(mask.carbon) }
             }
         }
         return nil

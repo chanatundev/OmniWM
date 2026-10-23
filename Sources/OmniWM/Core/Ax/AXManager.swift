@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import ApplicationServices
@@ -41,6 +41,9 @@ final class AXManager {
     let managedWindowBindings = AXManagedWindowBindings()
     let frameLedger = AXFrameApplicationLedger()
     var workspaceFrameSettlement: AXFrameSettlement?
+    var deferredParkRequests: [AXFrameApplicationRequest] = []
+    var deferredParkAwaitedWindowIds: Set<Int> = []
+    var deferredParkTimeout: Task<Void, Never>?
     private var pendingFrameRetryTasksByWindowId: [Int: Task<Void, Never>] = [:]
     private var pendingFrameRetryGenerationByWindowId: [Int: UInt64] = [:]
     private var pendingFrameRetryRequestsByWindowId: [Int: AXFrameRetryRequest] = [:]
@@ -345,6 +348,10 @@ final class AXManager {
 }
 
 extension AXManager {
+    func isAwaitingFrameWrite(_ windowId: Int) -> Bool {
+        frameLedger.hasPendingFrameWrite(for: windowId) || pendingFrameRetryRequestsByWindowId[windowId] != nil
+    }
+
     func scheduleFrameRetry(_ retry: AXFrameRetryRequest) {
         let pid = retry.pid
         let windowId = retry.windowId

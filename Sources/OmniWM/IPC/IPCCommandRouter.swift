@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -56,6 +56,8 @@ final class IPCCommandRouter {
             return controller.commandHandler.performCommand(.presentation(command))
         case let .media(command):
             return controller.commandHandler.performCommand(.media(command))
+        case let .keyboardMode(command):
+            return controller.commandHandler.performCommand(.keyboardMode(command))
         case let .windowState(command):
             return controller.commandHandler.performCommand(.windowState(command))
         case let .scratchpad(command):

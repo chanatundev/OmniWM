@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -62,7 +62,7 @@ extension WMController {
             minWidth: evaluation.decision.ruleEffects.minWidth,
             minHeight: evaluation.decision.ruleEffects.minHeight,
             initialNiriContainerPrimarySpan: evaluation.decision.admissionHints.initialNiriContainerPrimarySpan,
-            matchedRuleId: evaluation.decision.ruleEffects.matchedRuleId,
+            ruleProvenance: evaluation.decision.ruleProvenance,
             heuristicReasons: evaluation.decision.heuristicReasons,
             attributeFetchSucceeded: evaluation.facts.ax.attributeFetchSucceeded
         )

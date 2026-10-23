@@ -1,23 +1,35 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
+enum CommandPaletteFilteredItems {
+    case windows([CommandPaletteWindowItem])
+    case menu([MenuItemModel])
+    case clipboard([ClipboardPaletteItem])
+    case commands([CommandPaletteCommandItem])
+    case launcher
+}
+
 extension CommandPaletteController {
     var filteredWindowItems: [CommandPaletteWindowItem] {
-        CommandPaletteSearch.filterWindowItems(windows, query: searchText)
+        guard case let .windows(items) = filteredItems else { return [] }
+        return items
     }
 
     var filteredMenuItems: [MenuItemModel] {
-        CommandPaletteSearch.filterMenuItems(menuItems, query: searchText)
+        guard case let .menu(items) = filteredItems else { return [] }
+        return items
     }
 
     var filteredClipboardItems: [ClipboardPaletteItem] {
-        CommandPaletteSearch.filterClipboardItems(clipboardItems, query: searchText)
+        guard case let .clipboard(items) = filteredItems else { return [] }
+        return items
     }
 
     var filteredCommandItems: [CommandPaletteCommandItem] {
-        CommandPaletteSearch.filterCommandItems(commandItems, query: searchText)
+        guard case let .commands(items) = filteredItems else { return [] }
+        return items
     }
 
     var isMenuModeAvailable: Bool {

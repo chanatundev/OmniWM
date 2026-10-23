@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -43,7 +43,8 @@ extension SkyLight {
         return rect
     }
 
-    func transactionMove(_ wid: UInt32, origin: CGPoint) {
+    @discardableResult
+    func transactionMove(_ wid: UInt32, origin: CGPoint) -> Bool {
         withTransaction { transaction in
             transactions.transactionMoveWindowWithGroup(transaction, wid, origin)
         }

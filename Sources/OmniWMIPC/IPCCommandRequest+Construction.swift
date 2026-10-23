@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 extension IPCCommandRequest {
     public init(name: IPCCommandName, argumentValues: [IPCCommandArgumentValue] = []) throws {
@@ -42,6 +42,8 @@ extension IPCCommandRequest {
             self = try .presentation(arguments.requireNoArguments(name))
         case let .media(name):
             self = try .media(arguments.requireNoArguments(name))
+        case let .keyboardMode(name):
+            self = try .keyboardMode(arguments.requireNoArguments(name))
         case let .windowState(name):
             self = try .windowState(arguments.requireNoArguments(name))
         case let .scratchpad(name):

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import CoreGraphics
@@ -147,12 +147,12 @@ final class TrackpadWindowGestureTests: XCTestCase {
         XCTAssertEqual(fixture.engine.interactiveMove?.windowToken, fixture.first.token)
         XCTAssertFalse(handler.isViewportGestureActive)
         XCTAssertTrue(handler.isInteractiveGestureActive)
-        guard case let .window(_, targetToken, insertPosition)? = fixture.engine.interactiveMove?.currentHoverTarget
-        else {
-            return XCTFail("Expected the virtual cursor to hover the second window")
-        }
-        XCTAssertEqual(targetToken, fixture.second.token)
-        XCTAssertEqual(insertPosition, .swap)
+        let hoverTarget = try XCTUnwrap(
+            fixture.engine.interactiveMove?.currentHoverTarget,
+            "Expected the virtual cursor to hover the second window"
+        )
+        XCTAssertEqual(hoverTarget.token, fixture.second.token)
+        XCTAssertNil(hoverTarget.direction)
 
         gesture.end()
 
@@ -163,46 +163,36 @@ final class TrackpadWindowGestureTests: XCTestCase {
         XCTAssertEqual(fixture.windowOrder(), [fixture.second.token, fixture.first.token])
     }
 
-    func testThreeFingerDragResizesWindowUntilFingersLift() throws {
-        let fixture = try makeNiriFixture(pid: 9_102)
-        let handler = fixture.handler
-        let widthBefore = fixture.firstFrame.width
+    func testThreeFingerResizePreservesLifecycleAcrossSensitivities() throws {
+        let cases: [(Double, CGFloat, pid_t)] = [(1, 160, 9_102), (0.5, 80, 9_103)]
+        for (sensitivity, delta, pid) in cases {
+            let fixture = try makeNiriFixture(pid: pid)
+            fixture.controller.settings.gestures.windowGestureSensitivity = sensitivity
+            let handler = fixture.handler
+            let widthBefore = fixture.firstFrame.width
 
-        var gesture = fixture.driver(at: fixture.firstRightEdgeGrip)
-        gesture.begin(fingers: 3, x: 0.4)
-        gesture.drag(fingers: 3, fromX: 0.4, toX: 0.5, steps: 8)
+            var gesture = fixture.driver(at: fixture.firstRightEdgeGrip)
+            gesture.begin(fingers: 3, x: 0.4)
+            gesture.drag(fingers: 3, fromX: 0.4, toX: 0.5, steps: 8)
 
-        XCTAssertEqual(handler.state.activeGestureMode, .windowResize)
-        XCTAssertTrue(handler.state.isResizing)
-        XCTAssertTrue(handler.state.gestureOwnsWindowInteraction)
-        XCTAssertEqual(handler.state.resizeLayout, .niri)
-        XCTAssertNil(handler.state.activeInteractionButton)
-        let resize = try XCTUnwrap(fixture.engine.interactiveResize)
-        XCTAssertTrue(resize.edges.contains(.right))
-        XCTAssertEqual(resize.startMouseLocation, gesture.location)
+            XCTAssertEqual(handler.state.activeGestureMode, .windowResize)
+            XCTAssertTrue(handler.state.isResizing)
+            XCTAssertTrue(handler.state.gestureOwnsWindowInteraction)
+            XCTAssertEqual(handler.state.resizeLayout, .niri)
+            XCTAssertNil(handler.state.activeInteractionButton)
+            let resize = try XCTUnwrap(fixture.engine.interactiveResize)
+            XCTAssertTrue(resize.edges.contains(.right))
+            XCTAssertEqual(resize.startMouseLocation, gesture.location)
 
-        gesture.end()
+            gesture.end()
 
-        XCTAssertFalse(handler.state.isResizing)
-        XCTAssertFalse(handler.state.gestureOwnsWindowInteraction)
-        XCTAssertNil(fixture.engine.interactiveResize)
-        XCTAssertEqual(handler.state.gesturePhase, .idle)
-        let widthAfter = try XCTUnwrap(fixture.frames()[fixture.first.token]).width
-        XCTAssertEqual(widthAfter, widthBefore + 160, accuracy: 2)
-    }
-
-    func testSensitivityScalesVirtualCursorTravel() throws {
-        let fixture = try makeNiriFixture(pid: 9_103)
-        fixture.controller.settings.gestures.windowGestureSensitivity = 0.5
-        let widthBefore = fixture.firstFrame.width
-
-        var gesture = fixture.driver(at: fixture.firstRightEdgeGrip)
-        gesture.begin(fingers: 3, x: 0.4)
-        gesture.drag(fingers: 3, fromX: 0.4, toX: 0.5, steps: 8)
-        gesture.end()
-
-        let widthAfter = try XCTUnwrap(fixture.frames()[fixture.first.token]).width
-        XCTAssertEqual(widthAfter, widthBefore + 80, accuracy: 2)
+            XCTAssertFalse(handler.state.isResizing)
+            XCTAssertFalse(handler.state.gestureOwnsWindowInteraction)
+            XCTAssertNil(fixture.engine.interactiveResize)
+            XCTAssertEqual(handler.state.gesturePhase, .idle)
+            let widthAfter = try XCTUnwrap(fixture.frames()[fixture.first.token]).width
+            XCTAssertEqual(widthAfter, widthBefore + delta, accuracy: 2)
+        }
     }
 
     func testWindowGestureWithNoWindowUnderCursorNeverArms() throws {
@@ -427,7 +417,7 @@ final class TrackpadWindowGestureTests: XCTestCase {
     func testFourFingerDragSwapsDwindleTilesOnRelease() throws {
         let fixture = try makeDwindleFixture(pid: 9_201)
         let handler = fixture.handler
-        let travel = (fixture.secondFrame.center.x - fixture.firstFrame.center.x) / fixture.screen.width
+        let travel = (fixture.secondFrame.minX + 32 - fixture.firstFrame.center.x) / fixture.screen.width
 
         var gesture = fixture.driver(at: fixture.firstFrame.center)
         gesture.begin(fingers: 4, x: 0.2)
@@ -437,6 +427,8 @@ final class TrackpadWindowGestureTests: XCTestCase {
         XCTAssertEqual(handler.state.moveLayout, .dwindle)
         XCTAssertEqual(fixture.engine.interactiveMove?.token, fixture.first)
         XCTAssertEqual(fixture.engine.interactiveMove?.targetToken, fixture.second)
+        XCTAssertNil(fixture.engine.interactiveMove?.targetDirection)
+        XCTAssertEqual(fixture.engine.interactiveMoveTargetFrame(at: 0), fixture.secondFrame)
 
         gesture.end()
 
@@ -596,10 +588,15 @@ final class TrackpadWindowGestureTests: XCTestCase {
             operations: backend.operations(sleeper: sleeper),
             topologyMonitoringEnabled: false
         )
+        defer {
+            fixture.controller.layoutRefreshController.resetState()
+            handler.cleanup()
+            await sleeper.resumeAll()
+        }
         XCTAssertTrue(handler.installMultitouchSource(source))
-        await sleeper.waitForScheduledSleep(of: source)
-        await sleeper.resumeNext()
-        await sleeper.waitForScheduledSleep(of: source)
+        try await sleeper.waitForScheduledSleep(of: source)
+        try await sleeper.resumeNext()
+        try await sleeper.waitForScheduledSleep(of: source)
 
         let location = fixture.firstFrame.center
         let startX: Float = 0.2
@@ -628,9 +625,6 @@ final class TrackpadWindowGestureTests: XCTestCase {
         XCTAssertEqual(fixture.windowOrder(), [fixture.second.token, fixture.first.token])
 
         emit(fingers: 0, x: 0)
-        fixture.controller.layoutRefreshController.resetState()
-        handler.cleanup()
-        await sleeper.resumeAll()
     }
 
     func testMoveOvershootKeepsEdgeWindowAsDropTarget() throws {
@@ -640,10 +634,12 @@ final class TrackpadWindowGestureTests: XCTestCase {
         var gesture = fixture.driver(at: fixture.firstFrame.center)
         gesture.begin(fingers: 4, x: 0.2)
         gesture.drag(fingers: 4, fromX: 0.2, toX: 1)
-        guard case let .window(_, token, _)? = fixture.engine.interactiveMove?.currentHoverTarget else {
-            return XCTFail("Overshoot lost the edge drop target")
-        }
-        XCTAssertEqual(token, fixture.second.token)
+        let hoverTarget = try XCTUnwrap(
+            fixture.engine.interactiveMove?.currentHoverTarget,
+            "Overshoot lost the edge drop target"
+        )
+        XCTAssertEqual(hoverTarget.token, fixture.second.token)
+        XCTAssertNil(hoverTarget.direction)
         gesture.end()
         XCTAssertEqual(fixture.windowOrder(), [fixture.second.token, fixture.first.token])
     }

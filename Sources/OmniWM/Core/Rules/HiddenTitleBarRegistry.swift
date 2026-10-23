@@ -1,11 +1,20 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
 
 enum HiddenTitleBarRegistry {
     static let fullscreenButtonOptionalBundleIds: Set<String> = [
+        "com.adobe.acc.adobecreativecloud",
+        "com.adobe.acrobat.pro",
+        "com.adobe.aftereffects",
+        "com.adobe.illustrator",
+        "com.adobe.indesign",
+        "com.adobe.lightroomclassiccc7",
+        "com.adobe.photoshop",
+        "com.adobe.premierepro.25",
+        "com.adobe.premierepro.26",
         "com.microsoft.vscode",
         "com.vscodium"
     ]

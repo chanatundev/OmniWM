@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import CoreHID
@@ -78,6 +78,19 @@ final class MultitouchFrameMailbox: @unchecked Sendable {
 
     func setSteadyFrameFloor(_ floor: Int) {
         state.withLock { $0.steadyFrameFloor = floor }
+    }
+
+    var activePhysicalFingerCount: Int {
+        state.withLock { value in
+            if let owner = value.ownerSlot {
+                return value.physicalFingerCounts[owner]
+            }
+            var maxCount = 0
+            for i in 0 ..< 64 where value.physicalFingerCounts[i] > maxCount {
+                maxCount = value.physicalFingerCounts[i]
+            }
+            return maxCount
+        }
     }
 
     func offer(_ frame: MultitouchGestureSource.RawFrame, generation: UInt, slot: Int) -> Bool {

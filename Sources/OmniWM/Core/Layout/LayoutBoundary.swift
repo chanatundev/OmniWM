@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -95,6 +95,7 @@ struct NiriWorkspaceSnapshot {
     let removalSeed: NiriWindowRemovalSeed?
     let gap: CGFloat
     let niriWorkingFrame: CGRect
+    let fullscreenLayoutFrame: CGRect
     let displayRefreshRate: Double
     let isActiveWorkspace: Bool
     let quietArrivalTokens: Set<WindowToken>

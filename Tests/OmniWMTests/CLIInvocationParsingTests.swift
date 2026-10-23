@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 @testable import OmniWMCtl
@@ -24,7 +24,7 @@ final class CLIInvocationParsingTests: XCTestCase {
                 let parsed = try CLIParser.parse(arguments: ["omniwmctl"] + formatArguments + testCase.arguments)
 
                 XCTAssertEqual(parsed.request.kind, testCase.kind)
-                XCTAssertEqual(parsed.request.version, 20)
+                XCTAssertEqual(parsed.request.version, 22)
                 XCTAssertNotNil(UUID(uuidString: parsed.request.id))
                 XCTAssertEqual(parsed.outputFormat, !formatArguments.isEmpty || testCase.kind == .query ? .json : .text)
                 XCTAssertFalse(parsed.expectsEventStream)

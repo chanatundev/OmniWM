@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -96,8 +96,11 @@ final class DwindleInteractiveMoveTests: XCTestCase {
         let groupCenter = try XCTUnwrap(fixture.frame(c)).center
         XCTAssertTrue(engine.findNode(for: fixture.b, in: fixture.ws) === engine.findNode(for: c, in: fixture.ws))
 
-        XCTAssertTrue(engine.interactiveMoveBegin(token: fixture.a, startLocation: aFrame.center, in: fixture.ws))
+        XCTAssertTrue(engine.interactiveMoveBegin(
+            token: fixture.a, startLocation: aFrame.center, allowsInsertion: true, in: fixture.ws
+        ))
         XCTAssertEqual(engine.interactiveMoveUpdate(currentLocation: groupCenter, at: 0), c)
+        XCTAssertFalse(try XCTUnwrap(engine.interactiveMove).isInsertion)
         XCTAssertEqual(engine.interactiveMoveEnd(), c)
 
         XCTAssertNil(engine.interactiveMove)

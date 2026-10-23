@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -74,6 +74,8 @@ enum CLIRenderer {
              .unsupportedLayout,
              .duplicateMark,
              .invalidMark,
+             .ineligibleWindow,
+             .doesNotFit,
              .invalidArguments,
              .invalidRequest,
              .none:
@@ -157,10 +159,14 @@ enum CLIRenderer {
     private static func formattedResponseText(_ response: IPCResponse, format: CLIOutputFormat) -> String {
         guard response.ok else {
             let status = humanReadableStatus(for: response)
-            guard let result = response.result,
-                  case let .capture(capture) = result.payload
-            else { return status }
-            return "\(status)\n\(CLIDiagnosticsRenderer.formattedCapture(capture, format: format))"
+            switch response.result?.payload {
+            case let .capture(capture)?:
+                return "\(status)\n\(CLIDiagnosticsRenderer.formattedCapture(capture, format: format))"
+            case let .windowGather(gather)?:
+                return "\(status)\n\(formattedWindowGather(gather, format: format))"
+            default:
+                return status
+            }
         }
         guard let result = response.result else { return humanReadableStatus(for: response) }
         return formattedPayload(result.payload, format: format)
@@ -208,6 +214,8 @@ enum CLIRenderer {
             return CLIDiagnosticsRenderer.formattedMetrics(payload, format: format)
         case let .windowMarks(payload):
             return formattedWindowMarks(payload, format: format)
+        case let .windowGather(payload):
+            return formattedWindowGather(payload, format: format)
         case let .shellWidgets(payload):
             return formattedShellWidgets(payload, format: format)
         }
@@ -299,11 +307,12 @@ extension CLIRenderer {
         let workspaceRows = payload.workspaceActions.map { [$0.path, $0.summary, "workspace"] }
         let windowRows = payload.windowActions.map { [$0.path, $0.summary, "window"] }
         let windowMarkRows = payload.windowMarkActions.map { [$0.path, $0.summary, "window-mark"] }
+        let windowGatherRows = payload.windowGatherActions.map { [$0.path, $0.summary, "window-gather"] }
         let shellRows = payload.shellActions.map { [$0.path, $0.summary, "shell"] }
 
         return CLITableRenderer.formatRows(
             headers: ["PATH", "SUMMARY", "SURFACE"],
-            rows: commandRows + workspaceRows + windowRows + windowMarkRows + shellRows,
+            rows: commandRows + workspaceRows + windowRows + windowMarkRows + windowGatherRows + shellRows,
             format: format
         )
     }
@@ -334,6 +343,7 @@ extension CLIRenderer {
             ["workspace-actions", String(payload.workspaceActions.count)],
             ["window-actions", String(payload.windowActions.count)],
             ["window-mark-actions", String(payload.windowMarkActions.count)],
+            ["window-gather-actions", String(payload.windowGatherActions.count)],
             ["shell-actions", String(payload.shellActions.count)],
             ["subscriptions", String(payload.subscriptions.count)]
         ]
@@ -348,16 +358,32 @@ extension CLIRenderer {
         let rows = payload.marks.map { mark in
             [
                 mark.name,
+                dashIfEmpty(mark.id),
                 mark.workspace.displayName,
                 mark.app.name,
                 dashIfEmpty(mark.title ?? "")
             ]
         }
         return CLITableRenderer.formatRows(
-            headers: ["MARK", "WORKSPACE", "APP", "TITLE"],
+            headers: ["MARK", "ID", "WORKSPACE", "APP", "TITLE"],
             rows: rows,
             format: format
         )
+    }
+
+    private static func formattedWindowGather(
+        _ payload: IPCWindowGatherResult,
+        format: CLIOutputFormat
+    ) -> String {
+        let table = CLITableRenderer.formatRows(
+            headers: ["ID", "STATUS", "REASON"],
+            rows: payload.windows.map { [$0.windowId, $0.status.rawValue, $0.reason?.rawValue ?? "-"] },
+            format: format
+        )
+        guard format == .table || format == .text else { return table }
+        let destination = payload.workspace.map { " on \($0.displayName)" } ?? ""
+        let reason = payload.reason.map { ": \($0.rawValue)" } ?? ""
+        return "\(payload.outcome.rawValue)\(destination)\(reason)\n\(table)"
     }
 
     private static func formattedShellWidgets(

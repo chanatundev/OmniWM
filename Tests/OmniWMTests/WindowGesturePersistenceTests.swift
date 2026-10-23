@@ -1,32 +1,33 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 @testable import OmniWM
 import XCTest
 
 final class WindowGesturePersistenceTests: XCTestCase {
-    func testWindowGestureKeysAreAdditiveWithinSchemaThree() throws {
+    func testWindowGestureKeysAreAdditiveWithinCurrentSchema() throws {
         let canonical = String(decoding: try SettingsTOMLCodec.encode(.defaults()), as: UTF8.self)
         let data = Data(canonical.components(separatedBy: "\n")
             .filter { !$0.hasPrefix("windowMove") && !$0.hasPrefix("windowResize")
-                && !$0.hasPrefix("windowGestureSensitivity")
+                && !$0.hasPrefix("windowGestureSensitivity") && !$0.hasPrefix("resizePreviewStyle")
             }
             .joined(separator: "\n").utf8)
 
         let result = try SettingsTOMLCodec.decodeForLoad(data)
 
-        XCTAssertEqual(SettingsTOMLCodec.currentSchemaVersion, 4)
+        XCTAssertEqual(SettingsTOMLCodec.currentSchemaVersion, 5)
         XCTAssertNil(result.migration)
         XCTAssertEqual(result.export.gestures.windowMoveEnabled, false)
         XCTAssertEqual(result.export.gestures.windowMoveFingerCount, .four)
         XCTAssertEqual(result.export.gestures.windowResizeEnabled, false)
         XCTAssertEqual(result.export.gestures.windowResizeFingerCount, .three)
         XCTAssertEqual(result.export.gestures.windowGestureSensitivity, 1)
+        XCTAssertEqual(result.export.gestures.resizePreviewStyle, .live)
         XCTAssertEqual(try SettingsTOMLCodec.decode(SettingsTOMLCodec.encode(result.export)), result.export)
     }
 
-    func testWindowGestureSettingsRoundTripEverySupportedFingerCount() throws {
+    func testWindowGestureSettingsRoundTripEverySupportedFingerCountAndPreviewStyle() throws {
         for count in GestureFingerCount.allCases {
             var export = SettingsExport.defaults()
             export.gestures.windowMoveEnabled = true
@@ -39,6 +40,63 @@ final class WindowGesturePersistenceTests: XCTestCase {
             XCTAssertEqual(try SettingsTOMLCodec.decode(encoded), export)
             XCTAssertTrue(SettingsTOMLCodec.unknownKeyPaths(in: encoded).isEmpty)
         }
+        for (style, raw) in [(ResizePreviewStyle.live, "live"), (.glass, "glass"), (.snapshot, "snapshot")] {
+            var export = SettingsExport.defaults()
+            export.gestures.resizePreviewStyle = style
+            let encoded = try SettingsTOMLCodec.encode(export)
+            XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("resizePreviewStyle = \"\(raw)\""))
+            XCTAssertEqual(try SettingsTOMLCodec.decode(encoded).gestures.resizePreviewStyle, style)
+            XCTAssertEqual(try SettingsTOMLCodec.decode(encoded), export)
+            XCTAssertTrue(SettingsTOMLCodec.unknownKeyPaths(in: encoded).isEmpty)
+        }
+    }
+
+    func testDwindleGroupDragAcrossDisplaysDefaultsToGroupAndRoundTrips() throws {
+        XCTAssertEqual(SettingsExport.defaults().gestures.dwindleGroupDragAcrossDisplays, .group)
+        for mode in DwindleGroupDrag.allCases {
+            var export = SettingsExport.defaults()
+            export.gestures.dwindleGroupDragAcrossDisplays = mode
+            let encoded = try SettingsTOMLCodec.encode(export)
+            XCTAssertTrue(
+                String(decoding: encoded, as: UTF8.self)
+                    .contains("dwindleGroupDragAcrossDisplays = \"\(mode.rawValue)\"")
+            )
+            XCTAssertEqual(try SettingsTOMLCodec.decode(encoded), export)
+            XCTAssertTrue(SettingsTOMLCodec.unknownKeyPaths(in: encoded).isEmpty)
+        }
+
+        let canonical = String(decoding: try SettingsTOMLCodec.encode(.defaults()), as: UTF8.self)
+        let omitted = Data(canonical.components(separatedBy: "\n")
+            .filter { !$0.hasPrefix("dwindleGroupDragAcrossDisplays") }
+            .joined(separator: "\n").utf8)
+        let result = try SettingsTOMLCodec.decodeForLoad(omitted)
+        XCTAssertNil(result.migration)
+        XCTAssertEqual(result.export.gestures.dwindleGroupDragAcrossDisplays, .group)
+        XCTAssertThrowsError(try SettingsTOMLCodec.decode(replacingDefault(
+            "dwindleGroupDragAcrossDisplays",
+            with: "\"tile\""
+        )))
+    }
+
+    func testAdoptNativeResizeDefaultsOffAndRoundTrips() throws {
+        XCTAssertEqual(SettingsExport.defaults().gestures.adoptNativeResize, false)
+        for enabled in [false, true] {
+            var export = SettingsExport.defaults()
+            export.gestures.adoptNativeResize = enabled
+            let encoded = try SettingsTOMLCodec.encode(export)
+            XCTAssertTrue(String(decoding: encoded, as: UTF8.self).contains("adoptNativeResize = \(enabled)"))
+            XCTAssertEqual(try SettingsTOMLCodec.decode(encoded), export)
+            XCTAssertTrue(SettingsTOMLCodec.unknownKeyPaths(in: encoded).isEmpty)
+        }
+
+        let canonical = String(decoding: try SettingsTOMLCodec.encode(.defaults()), as: UTF8.self)
+        let omitted = Data(canonical.components(separatedBy: "\n")
+            .filter { !$0.hasPrefix("adoptNativeResize") }
+            .joined(separator: "\n").utf8)
+        let result = try SettingsTOMLCodec.decodeForLoad(omitted)
+        XCTAssertNil(result.migration)
+        XCTAssertEqual(result.export.gestures.adoptNativeResize, false)
+        XCTAssertThrowsError(try SettingsTOMLCodec.decode(replacingDefault("adoptNativeResize", with: "1")))
     }
 
     func testMalformedWindowGestureValuesRejectDecode() throws {
@@ -47,7 +105,8 @@ final class WindowGesturePersistenceTests: XCTestCase {
             ("windowResizeEnabled", ["1", "\"false\""]),
             ("windowMoveFingerCount", ["1", "5", "true", "\"four\""]),
             ("windowResizeFingerCount", ["1", "5", "false", "\"three\""]),
-            ("windowGestureSensitivity", ["true", "\"fast\""])
+            ("windowGestureSensitivity", ["true", "\"fast\""]),
+            ("resizePreviewStyle", ["1", "true"])
         ] {
             for value in values {
                 let data = try replacingDefault(key, with: value)

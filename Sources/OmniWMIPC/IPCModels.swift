@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
 public enum OmniWMIPCProtocol {
-    public static let version = 20
+    public static let version = 22
 }
 
 public struct IPCNoPayload: Codable, Equatable, Sendable {
@@ -21,6 +21,7 @@ public enum IPCRequestKind: String, Codable, Equatable, Sendable {
     case workspace
     case window
     case windowMark = "window-mark"
+    case windowGather = "window-gather"
     case shell
     case subscribe
 }
@@ -35,6 +36,7 @@ public enum IPCResponseKind: String, Codable, Equatable, Sendable {
     case workspace
     case window
     case windowMark = "window-mark"
+    case windowGather = "window-gather"
     case shell
     case subscribe
     case error
@@ -59,6 +61,8 @@ public enum IPCResponseKind: String, Codable, Equatable, Sendable {
             self = .window
         case .windowMark:
             self = .windowMark
+        case .windowGather:
+            self = .windowGather
         case .shell:
             self = .shell
         case .subscribe:
@@ -98,6 +102,8 @@ public enum IPCErrorCode: String, Codable, Equatable, Sendable, Error {
     case unsupportedLayout = "unsupported_layout"
     case duplicateMark = "duplicate_mark"
     case invalidMark = "invalid_mark"
+    case ineligibleWindow = "ineligible_window"
+    case doesNotFit = "does_not_fit"
     case internalError = "internal_error"
 }
 
@@ -144,6 +150,11 @@ public enum IPCColumnViewport: String, Codable, CaseIterable, Equatable, Sendabl
     case before
     case intersecting
     case after
+}
+
+public enum IPCColumnDisplayMode: String, Codable, CaseIterable, Equatable, Sendable {
+    case normal
+    case tabbed
 }
 
 public enum IPCLayoutReason: String, Codable, Equatable, Sendable {

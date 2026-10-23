@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import Foundation
@@ -78,8 +78,7 @@ final class WindowAdmissionPolicyTests: XCTestCase {
         let axRef = WindowAdmissionTestSupport.axRef(for: token)
         let ruleEffects = ManagedWindowRuleEffects(
             minWidth: 640,
-            minHeight: 480,
-            matchedRuleId: UUID()
+            minHeight: 480
         )
         let admissionHints = ManagedWindowAdmissionHints(
             initialNiriContainerPrimarySpan: 0.4
@@ -94,6 +93,7 @@ final class WindowAdmissionPolicyTests: XCTestCase {
             admissionHints: admissionHints
         )
         controller.axEventHandler.windowInfoProvider = { _ in nil }
+        controller.axEventHandler.windowInfoBatchProvider = { _ in nil }
 
         let evaluation = controller.evaluateWindowDisposition(
             axRef: axRef,
@@ -266,82 +266,29 @@ final class WindowAdmissionPolicyTests: XCTestCase {
         XCTAssertTrue(WMController.isMeaningfulAdmissionFrame(CGRect(x: 0, y: 0, width: 640, height: 480)))
     }
 
-    func testExplicitUserRuleCannotBypassTilingManageability() {
-        let controller = WindowAdmissionTestSupport.controller()
-        let pid: pid_t = 467_101
-        let windowId = 467_102
-        let windowInfo = WindowServerInfo(
-            id: UInt32(windowId),
-            pid: pid,
-            level: 0,
-            frame: CGRect(x: 0, y: 0, width: 1, height: 1)
-        )
-        let evaluation = explicitProxyEvaluation(pid: pid, windowId: windowId, windowInfo: windowInfo)
-
-        XCTAssertTrue(
-            controller.shouldDeferAdmission(
-                evaluation: evaluation,
-                axRef: AXWindowRef(element: AXUIElementCreateApplication(pid), windowId: windowId),
-                mode: .tiling,
-                windowInfo: windowInfo
+    func testNewAdmissionRequiresManageableGeometry() {
+        let cases: [(pid_t, Int, TrackedWindowMode, WindowDecisionDisposition, Bool, CGRect, Bool)] = [
+            (467_101, 467_102, .tiling, .managed, true, CGRect(x: 0, y: 0, width: 1, height: 1), true),
+            (467_103, 467_104, .floating, .floating, false, CGRect(x: 0, y: 0, width: 1, height: 1), true),
+            (467_105, 467_106, .floating, .floating, false, CGRect(x: 0, y: 0, width: 420, height: 260), false)
+        ]
+        for (pid, windowId, mode, disposition, isSizeSettable, frame, expected) in cases {
+            let controller = WindowAdmissionTestSupport.controller()
+            let windowInfo = WindowServerInfo(id: UInt32(windowId), pid: pid, level: 0, frame: frame)
+            let evaluation = explicitProxyEvaluation(
+                pid: pid, windowId: windowId, windowInfo: windowInfo,
+                disposition: disposition, isSizeSettable: isSizeSettable
             )
-        )
-    }
-
-    func testNewFloatingAdmissionRejectsOneByOneProxyGeometry() {
-        let controller = WindowAdmissionTestSupport.controller()
-        let pid: pid_t = 467_103
-        let windowId = 467_104
-        let windowInfo = WindowServerInfo(
-            id: UInt32(windowId),
-            pid: pid,
-            level: 0,
-            frame: CGRect(x: 0, y: 0, width: 1, height: 1)
-        )
-        let evaluation = explicitProxyEvaluation(
-            pid: pid,
-            windowId: windowId,
-            windowInfo: windowInfo,
-            disposition: .floating,
-            isSizeSettable: false
-        )
-
-        XCTAssertTrue(
-            controller.shouldDeferAdmission(
-                evaluation: evaluation,
-                axRef: AXWindowRef(element: AXUIElementCreateApplication(pid), windowId: windowId),
-                mode: .floating,
-                windowInfo: windowInfo
+            XCTAssertEqual(
+                controller.shouldDeferAdmission(
+                    evaluation: evaluation,
+                    axRef: AXWindowRef(element: AXUIElementCreateApplication(pid), windowId: windowId),
+                    mode: mode,
+                    windowInfo: windowInfo
+                ),
+                expected
             )
-        )
-    }
-
-    func testFixedSizeFloatingAdmissionDoesNotRequireSettableSize() {
-        let controller = WindowAdmissionTestSupport.controller()
-        let pid: pid_t = 467_105
-        let windowId = 467_106
-        let windowInfo = WindowServerInfo(
-            id: UInt32(windowId),
-            pid: pid,
-            level: 0,
-            frame: CGRect(x: 0, y: 0, width: 420, height: 260)
-        )
-        let evaluation = explicitProxyEvaluation(
-            pid: pid,
-            windowId: windowId,
-            windowInfo: windowInfo,
-            disposition: .floating,
-            isSizeSettable: false
-        )
-
-        XCTAssertFalse(
-            controller.shouldDeferAdmission(
-                evaluation: evaluation,
-                axRef: AXWindowRef(element: AXUIElementCreateApplication(pid), windowId: windowId),
-                mode: .floating,
-                windowInfo: windowInfo
-            )
-        )
+        }
     }
 
     func testExistingFloatingWindowBypassesTemporaryProxyGeometry() throws {
@@ -545,7 +492,7 @@ final class WindowAdmissionPolicyTests: XCTestCase {
         await controller.axEventHandler.lifecycleQueries.task?.value
     }
 
-    func testSingleToggleTileableFloatingDecisionTransitionsToTilingWithoutSecondInvocation() throws {
+    func testTileableEvaluationAllowsForcedTilingTransitionAfterFloatingToggle() throws {
         let controller = WindowAdmissionTestSupport.controller()
         defer {
             controller.hasStartedServices = false
@@ -668,6 +615,7 @@ private func explicitProxyEvaluation(
             workspaceName: nil,
             ruleEffects: .none,
             admissionHints: .none,
+            ruleProvenance: .none,
             heuristicReasons: [],
             deferredReason: nil
         ),

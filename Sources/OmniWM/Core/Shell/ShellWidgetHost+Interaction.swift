@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -15,6 +15,11 @@ extension ShellWidgetHost {
         from surface: ShellWidgetSurface? = nil
     ) {
         let action = click.action
+        if state.name == "notifications", click.event.kind == .click {
+            ShellNotificationTrace.record(
+                "widget.click", fields: "view=\(view.rawValue) handler=\(action & OMNI_ACTION_HANDLER != 0)"
+            )
+        }
         if click.event.kind == .click, view == .bar, click.target != 0, click.event.button == .left, click.event.shift,
            click.event.phase == nil
         {
@@ -92,7 +97,7 @@ extension ShellWidgetHost {
                 state,
                 ShellScriptFailure(
                     kind: .runtime,
-                    message: "onClick \"\(command)\" is not an omniwmctl, shell or volume command"
+                    message: "onClick command is not an omniwmctl, shell or volume command"
                 )
             )
             return
@@ -120,6 +125,26 @@ extension ShellWidgetHost {
         case let .media(command): resources.media?.perform(command)
         case let .calendar(command): resources.calendar?.perform(command)
         case let .reminders(command): resources.calendar?.perform(command)
+        case let .notifications(command):
+            switch command {
+            case .refresh:
+                ShellNotificationTrace.record("host.command", fields: "kind=refresh")
+                resources.notifications.refresh()
+            case let .open(bundle):
+                if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundle) {
+                    NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+                }
+            case .dismiss,
+                 .reply:
+                ShellNotificationTrace.record(
+                    "host.command",
+                    fields: "kind=action focusedSurface=\(focusedSurface != nil)"
+                )
+                if resources.notifications.perform(command), let focusedSurface {
+                    releaseShellFocus(from: focusedSurface, restore: false)
+                    ShellNotificationTrace.record("host.focusReleased")
+                }
+            }
         case let .inputSource(command): resources.devices.inputSource.perform(command)
         case let .wifi(command): resources.devices.wifi.perform(command)
         case let .bluetooth(command): resources.devices.bluetooth.perform(command)

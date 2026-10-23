@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -30,7 +30,10 @@ extension NiriLayoutHandler {
         monitor: LayoutMonitorSnapshot
     ) -> [TabRailGeometryCommand] {
         var commands: [TabRailGeometryCommand] = []
-        for column in engine.columns(in: workspaceId) where column.isTabbed {
+        let columns = engine.columns(in: workspaceId)
+        let columnSpan = columns.span
+        for index in columnSpan.indices where columnSpan[index].isTabbed {
+            let column = columnSpan[index]
             let key = TabRailKey(workspaceId: workspaceId, owner: .niriColumn(column.id))
             guard let frame = column.renderedFrame,
                   !frame.isNull,

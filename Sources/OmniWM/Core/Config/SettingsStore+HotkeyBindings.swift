@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 extension SettingsStore {
     func isCommandFeatureEnabled(_ command: HotkeyCommand) -> Bool {
@@ -19,8 +19,14 @@ extension SettingsStore {
         hotkeyBindings[index] = HotkeyBinding(
             id: hotkeyBindings[index].id,
             command: hotkeyBindings[index].command,
-            trigger: newTrigger
+            trigger: newTrigger,
+            modeKey: hotkeyBindings[index].modeKey
         )
+    }
+
+    func updateModeKey(for commandId: String, newModeKey: KeyBinding?) {
+        guard let index = hotkeyBindings.firstIndex(where: { $0.id == commandId }) else { return }
+        hotkeyBindings[index].modeKey = HotkeyBindingRegistry.canonicalizeModeKey(newModeKey)
     }
 
     func clearBinding(for commandId: String) {

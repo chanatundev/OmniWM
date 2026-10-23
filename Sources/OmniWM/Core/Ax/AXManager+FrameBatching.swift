@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import ApplicationServices
@@ -95,7 +95,7 @@ extension AXManager {
                 framesByPid[pid] = []
                 framesByPid[pid]?.reserveCapacity(8)
             }
-            framesByPid[pid]?.append(request)
+            framesByPid[pid, default: []].append(request)
         }
 
         dispatchFrameApplications(framesByPid)

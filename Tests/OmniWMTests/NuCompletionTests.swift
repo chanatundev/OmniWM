@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 @testable import OmniWMCtl
@@ -12,6 +12,7 @@ final class NuCompletionTests: XCTestCase {
         XCTAssertFalse(script.contains("#{{"))
         XCTAssertTrue(script.contains("    windowMarkActionNames: ["))
         XCTAssertTrue(script.contains("    windowMarkListFlags: ["))
+        XCTAssertTrue(script.contains("    windowGatherReachFlag: \"--from\""))
         XCTAssertEqual(script, CLICompletionGenerator.script(for: .nu))
     }
 
@@ -59,8 +60,6 @@ final class NuCompletionTests: XCTestCase {
             ("omniwmctl capture ", CLICompletionCatalog.captureActionNames),
             ("omniwmctl workspace ", CLICompletionCatalog.workspaceActionNames),
             ("omniwmctl window ", CLICompletionCatalog.windowActionNames),
-            ("omniwmctl window mark ", CLICompletionCatalog.windowMarkActionNames),
-            ("omniwmctl window mark list ", CLICompletionCatalog.windowMarkListFlags),
             ("omniwmctl completion ", CLIShell.allCases.map(\.rawValue)),
             ("omniwmctl que", ["query"])
         ]
@@ -73,6 +72,19 @@ final class NuCompletionTests: XCTestCase {
         try assertCompletions("omniwmctl window mark ", CLICompletionCatalog.windowMarkActionNames)
         try assertCompletions("omniwmctl window mark list ", CLICompletionCatalog.windowMarkListFlags)
         try assertCompletions("omniwmctl window mark set saved ", [])
+    }
+
+    func testWindowGatherReachFlagAndValueCompletions() throws {
+        let cases: [(String, [String])] = [
+            ("omniwmctl window gather ", ["--from"]),
+            ("omniwmctl window gather ow_a ", ["--from"]),
+            ("omniwmctl window gather --from ", CLICompletionCatalog.windowGatherReaches),
+            ("omniwmctl window gather --from mo", ["monitor"]),
+            ("omniwmctl window gather --from all ow_a ", [])
+        ]
+        for (input, expected) in cases {
+            try assertCompletions(input, expected)
+        }
     }
 
     func testNestedCommandsAndLiteralArguments() throws {

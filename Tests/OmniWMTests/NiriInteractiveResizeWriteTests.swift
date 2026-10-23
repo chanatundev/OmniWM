@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import CoreGraphics
@@ -62,6 +62,47 @@ final class NiriInteractiveResizeWriteTests: XCTestCase {
         for token in movedNeighbors {
             XCTAssertEqual(components[token], .position)
         }
+    }
+
+    func testRelayoutSnapshotPreservesFocusAndQuietArrivalDuringScrollPath() throws {
+        let fixture = try makeFixture(windowCount: 2)
+        let manager = fixture.controller.workspaceManager
+        for token in fixture.tokens {
+            manager.setCachedConstraints(.unconstrained, for: token)
+        }
+        let expectedFocus = try XCTUnwrap(manager.preferredFocusToken(in: fixture.workspaceId))
+        let quietToken = fixture.tokens[0]
+        let foreignToken = WindowToken(pid: 961_999, windowId: 961_999)
+        manager.quietArrivalTokens = [quietToken, foreignToken]
+        let handler = fixture.controller.layoutRefreshController.niriHandler
+        let relayout = try XCTUnwrap(handler.makeWorkspaceSnapshot(
+            workspaceId: fixture.workspaceId,
+            monitor: fixture.monitor,
+            options: .init(
+                viewportState: nil,
+                useScrollAnimationPath: true,
+                removalSeed: nil,
+                isActiveWorkspace: true
+            )
+        ))
+
+        XCTAssertEqual(relayout.preferredFocusToken, expectedFocus)
+        XCTAssertEqual(relayout.quietArrivalTokens, [quietToken])
+
+        let onDemand = try XCTUnwrap(handler.makeWorkspaceSnapshot(
+            workspaceId: fixture.workspaceId,
+            monitor: fixture.monitor,
+            options: .init(
+                viewportState: manager.niriViewportState(for: fixture.workspaceId),
+                useScrollAnimationPath: true,
+                removalSeed: nil,
+                isActiveWorkspace: true
+            )
+        ))
+
+        XCTAssertNil(onDemand.preferredFocusToken)
+        XCTAssertTrue(onDemand.quietArrivalTokens.isEmpty)
+        XCTAssertEqual(manager.quietArrivalTokens, [quietToken, foreignToken])
     }
 
     private func makeFixture(windowCount: Int) throws -> Fixture {

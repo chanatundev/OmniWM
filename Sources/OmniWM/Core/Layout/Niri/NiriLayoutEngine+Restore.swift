@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -115,8 +115,7 @@ extension NiriLayoutEngine {
         let orderedTokens = tokens.filter { seenTokens.insert($0).inserted }
         let placedTokens = Set(orderedTokens.compactMap { token -> WindowToken? in
             guard let placement = placements[token],
-                  placement.columnIndex >= 0,
-                  placement.tileIndex >= 0
+                  placement.hasColumnPosition
             else {
                 return nil
             }
@@ -211,7 +210,7 @@ extension NiriLayoutEngine {
         column.targetWidth = nil
     }
 
-    private func applyPersistedWindowState(_ state: PersistedNiriWindowState, to window: NiriWindow) {
+    func applyPersistedWindowState(_ state: PersistedNiriWindowState, to window: NiriWindow) {
         window.sizingMode = state.sizingMode
         window.height = state.height
         window.savedHeight = state.savedHeight

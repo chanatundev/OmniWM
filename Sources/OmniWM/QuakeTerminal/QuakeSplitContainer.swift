@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Cocoa
 
@@ -188,6 +188,7 @@ private final class SplitDividerView: NSView {
         layer = CALayer()
         layer?.backgroundColor = NSColor.clear.cgColor
         visibleDividerLayer.backgroundColor = NSColor(white: 0.3, alpha: 1).cgColor
+        visibleDividerLayer.actions = ["bounds": NSNull(), "position": NSNull()]
         layer?.addSublayer(visibleDividerLayer)
     }
 

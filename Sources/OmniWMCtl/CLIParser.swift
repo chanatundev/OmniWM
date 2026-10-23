@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -36,16 +36,12 @@ struct ParsedCLICommand: Equatable {
 }
 
 enum CLIParser {
-    static func parse(
-        arguments: [String],
-        environment: [String: String] = ProcessInfo.processInfo.environment
-    ) throws -> ParsedCLICommand {
+    static func parse(arguments: [String]) throws -> ParsedCLICommand {
         let normalized = CLINormalizedArguments(arguments: arguments)
         guard let command = normalized.arguments.first else {
             throw CLIParseError.usage(usageText)
         }
 
-        _ = environment
         let requestId = UUID().uuidString
         let commandArguments = Array(normalized.arguments.dropFirst())
         var outputFormat = normalized.outputFormat ?? CLIOutputFormat.defaultFormat(for: command)
@@ -221,6 +217,9 @@ enum CLIParser {
         if arguments.first == "mark" {
             return try parseWindowMarkRequest(id: id, arguments: Array(arguments.dropFirst()))
         }
+        if arguments.first == "gather" {
+            return try parseWindowGatherRequest(id: id, arguments: Array(arguments.dropFirst()))
+        }
 
         guard let request = IPCWindowRequest(actionWords: arguments) else {
             throw CLIParseError.usage(usageText)
@@ -270,6 +269,7 @@ enum CLIParser {
         let workspaceLines = IPCAutomationManifest.workspaceActionDescriptors.map(\.path)
         let windowLines = IPCAutomationManifest.windowActionDescriptors.map(\.path)
         let windowMarkLines = IPCAutomationManifest.windowMarkActionDescriptors.map(\.path)
+        let windowGatherLines = IPCAutomationManifest.windowGatherActionDescriptors.map(\.path)
         let shellLines = IPCAutomationManifest.shellActionDescriptors.map(\.path)
         let captureLines = IPCAutomationManifest.captureActionDescriptors.map(\.path)
 
@@ -284,11 +284,13 @@ enum CLIParser {
         lines += ruleLines.map { "  omniwmctl \($0)" }
         lines += captureLines.map { "  omniwmctl \($0)" }
         lines += [
-            "  omniwmctl query <\(queryNames)> [selectors...] [--fields <csv>] [--format <json|ndjson|table|tsv|text>]"
+            "  omniwmctl query <\(queryNames)> [selectors...] [--fields <csv>] [--format <json|ndjson|table|tsv|text>]",
+            "  omniwmctl query windows [selectors...] --sort <\(IPCQuerySort.allCases.map(\.rawValue).joined(separator: "|"))>"
         ]
         lines += workspaceLines.map { "  omniwmctl \($0)" }
         lines += windowLines.map { "  omniwmctl \($0)" }
         lines += windowMarkLines.map { "  omniwmctl \($0)" }
+        lines += windowGatherLines.map { "  omniwmctl \($0)" }
         lines += shellLines.map { "  omniwmctl \($0)" }
         lines += [
             "  omniwmctl subscribe <\(subscriptionNames)> [--no-send-initial] [--reconnect] [--format json|ndjson]",

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -46,8 +46,8 @@ struct OverviewLayoutCalculator {
     private let geometry: OverviewLayoutGeometry
     private let scale: CGFloat
 
-    init(screenFrame: CGRect, scale: CGFloat) {
-        geometry = OverviewLayoutGeometry(screenFrame: screenFrame, scale: scale)
+    init(screenFrame: CGRect, scale: CGFloat, topSafeAreaInset: CGFloat = 0) {
+        geometry = OverviewLayoutGeometry(screenFrame: screenFrame, scale: scale, topSafeAreaInset: topSafeAreaInset)
         self.scale = scale
     }
 
@@ -132,16 +132,31 @@ struct OverviewLayoutCalculator {
         viewportFrame: CGRect,
         scale _: CGFloat
     ) -> CGFloat {
+        edgeAutoScrollVelocity(pointer: pointerY, lower: viewportFrame.minY, upper: viewportFrame.maxY)
+    }
+
+    static func dragStripAutoScrollVelocity(
+        pointer: CGPoint,
+        stripFrame: CGRect,
+        orientation: Monitor.Orientation
+    ) -> CGFloat {
+        let axis = OverviewRibbonAxis(orientation)
+        return edgeAutoScrollVelocity(
+            pointer: orientation == .horizontal ? pointer.x : pointer.y,
+            lower: axis.minimum(stripFrame),
+            upper: axis.maximum(stripFrame)
+        )
+    }
+
+    private static func edgeAutoScrollVelocity(pointer: CGFloat, lower: CGFloat, upper: CGFloat) -> CGFloat {
         let band = OverviewLayoutMetrics.dragAutoScrollBand
-        guard band > 0, viewportFrame.height > band * 2 else { return 0 }
+        guard band > 0, upper - lower > band * 2 else { return 0 }
         let maximumSpeed: CGFloat = 1_400
-        if pointerY > viewportFrame.maxY - band {
-            let depth = min(1, (pointerY - (viewportFrame.maxY - band)) / band)
-            return depth * maximumSpeed
+        if pointer > upper - band {
+            return min(1, (pointer - (upper - band)) / band) * maximumSpeed
         }
-        if pointerY < viewportFrame.minY + band {
-            let depth = min(1, ((viewportFrame.minY + band) - pointerY) / band)
-            return -depth * maximumSpeed
+        if pointer < lower + band {
+            return -min(1, ((lower + band) - pointer) / band) * maximumSpeed
         }
         return 0
     }

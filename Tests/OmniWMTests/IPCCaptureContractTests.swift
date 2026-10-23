@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -19,7 +19,7 @@ final class IPCCaptureContractTests: XCTestCase {
             let data = try IPCWire.makeEncoder().encode(request)
             let object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
 
-            XCTAssertEqual(object["version"] as? Int, 20)
+            XCTAssertEqual(object["version"] as? Int, 22)
             XCTAssertEqual(object["kind"] as? String, "capture")
             XCTAssertEqual(object["payload"] as? [String: String], expectedPayload)
             XCTAssertEqual(try IPCWire.makeDecoder().decode(IPCRequest.self, from: data), request)
@@ -93,11 +93,17 @@ final class IPCCaptureContractTests: XCTestCase {
             workspaceActions: [],
             windowActions: [],
             windowMarkActions: [],
+            windowGatherActions: [],
             shellActions: [],
             subscriptions: []
         )
         let commands = IPCCommandsQueryResult(
-            commands: [], workspaceActions: [], windowActions: [], windowMarkActions: [], shellActions: []
+            commands: [],
+            workspaceActions: [],
+            windowActions: [],
+            windowMarkActions: [],
+            windowGatherActions: [],
+            shellActions: []
         )
         let encoder = IPCWire.makeEncoder()
         let capabilitiesObject = try XCTUnwrap(

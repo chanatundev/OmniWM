@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -8,7 +8,7 @@ import Foundation
 final class WindowRuleReevaluationScheduler {
     private weak var controller: WMController?
     private var pendingWindowRuleReevaluationTask: Task<Void, Never>?
-    private var pendingWindowRuleReevaluationTargets: Set<WindowRuleReevaluationTarget> = []
+    private(set) var pendingWindowRuleReevaluationTargets: Set<WindowRuleReevaluationTarget> = []
     private var pendingWindowRuleReevaluationGeneration: UInt64 = 0
     private let reevaluate: (WMController, Set<WindowRuleReevaluationTarget>) async -> WindowRuleReevaluationOutcome
 

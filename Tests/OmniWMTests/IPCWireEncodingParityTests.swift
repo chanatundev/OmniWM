@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -40,7 +40,7 @@ final class IPCWireEncodingParityTests: XCTestCase {
 
     func testAllRequestModelsMatchReference() throws {
         let requests = try fixtures().filter { $0.kind == "request" }
-        XCTAssertEqual(requests.count, 365)
+        XCTAssertEqual(requests.count, 372)
         for fixture in requests {
             let request = try IPCWire.decodeRequest(from: fixture.data)
             XCTAssertEqual(try IPCWire.encodeRequestLine(request), try reference(request), fixture.name)
@@ -49,7 +49,7 @@ final class IPCWireEncodingParityTests: XCTestCase {
 
     func testAllResponseAndEventModelsMatchReference() throws {
         let messages = try fixtures().filter { $0.kind != "request" }
-        XCTAssertEqual(messages.count, 277)
+        XCTAssertEqual(messages.count, 257)
         for fixture in messages {
             for pretty in [false, true] {
                 if fixture.kind == "event" {

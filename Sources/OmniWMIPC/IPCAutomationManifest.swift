@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -341,16 +341,20 @@ public enum IPCAutomationManifest {
     }
 
     public static func commandDescriptors(matching commandWords: [String]) -> [IPCCommandDescriptor] {
-        commandDescriptors
-            .sorted {
-                if $0.commandWords.count != $1.commandWords.count {
-                    return $0.commandWords.count > $1.commandWords.count
-                }
-                return $0.path < $1.path
+        let catalog = commandDescriptors
+        var matches: [IPCCommandDescriptor] = []
+        for index in catalog.indices
+            where commandWords.count >= catalog[index].commandWords.count
+            && commandWords.starts(with: catalog[index].commandWords)
+        {
+            matches.append(catalog[index])
+        }
+        matches.sort {
+            if $0.commandWords.count != $1.commandWords.count {
+                return $0.commandWords.count > $1.commandWords.count
             }
-            .filter { descriptor in
-                guard commandWords.count >= descriptor.commandWords.count else { return false }
-                return Array(commandWords.prefix(descriptor.commandWords.count)) == descriptor.commandWords
-            }
+            return $0.path < $1.path
+        }
+        return matches
     }
 }

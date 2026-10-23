@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 @testable import OmniWM
@@ -64,8 +64,69 @@ final class WorkspaceSwipeBackdropTests: XCTestCase {
             window(3, level: 0, frame: frame),
             window(4, level: desktop - 1, frame: frame)
         ]
-        XCTAssertEqual(SkyLight.wallpaperWindowId(in: windows, frame: frame), 4)
-        XCTAssertNil(SkyLight.wallpaperWindowId(in: Array(windows.prefix(3)), frame: frame))
+        XCTAssertEqual(SkyLight.wallpaperWindow(in: windows, frame: frame)?.id, 4)
+        XCTAssertNil(SkyLight.wallpaperWindow(in: Array(windows.prefix(3)), frame: frame))
+    }
+
+    func testLiveWallpaperAboveTheDesktopIsPreferredAndCropped() throws {
+        let frame = CGRect(x: 0, y: 0, width: 4, height: 3)
+        let live = frame.insetBy(dx: -1, dy: -1)
+        let desktop = CGWindowLevelForKey(.desktopWindow)
+        let icons = CGWindowLevelForKey(.desktopIconWindow)
+        let windows = [
+            window(1, level: icons, frame: frame),
+            window(2, level: desktop + 1, frame: live),
+            window(3, level: desktop - 1, frame: frame)
+        ]
+        let match = try XCTUnwrap(SkyLight.wallpaperWindow(in: windows, frame: frame))
+        XCTAssertEqual(match.id, 2)
+        XCTAssertEqual(match.frame, live)
+
+        let image = try makeImage(width: 12, height: 10)
+        let cropped = try XCTUnwrap(SkyLight.crop(image, from: live, to: frame))
+        XCTAssertEqual(cropped.width, 8)
+        XCTAssertEqual(cropped.height, 6)
+        XCTAssertTrue(SkyLight.crop(image, from: frame, to: frame) === image)
+
+        let fractional = CGRect(x: -0.25, y: -0.25, width: 6, height: 5)
+        let offset = try XCTUnwrap(SkyLight.crop(image, from: fractional, to: frame))
+        XCTAssertEqual(offset.width, 8)
+        XCTAssertEqual(offset.height, 6)
+
+        let clipped = try makeImage(width: 8, height: 6)
+        XCTAssertTrue(SkyLight.crop(clipped, from: live, to: frame) === clipped)
+        XCTAssertNil(SkyLight.crop(try makeImage(width: 7, height: 6), from: live, to: frame))
+    }
+
+    func testFullWindowCaptureIsCroppedWhenDisplayHasSameAspectRatio() throws {
+        for scale in [1, 2] {
+            let image = try makeCoordinateImage(width: 8 * scale, height: 6 * scale)
+            let source = NSBitmapImageRep(cgImage: image)
+            for origin in [CGPoint.zero, CGPoint(x: -8, y: 11)] {
+                let windowFrame = CGRect(origin: origin, size: CGSize(width: 8, height: 6))
+                let frame = CGRect(x: origin.x + 2, y: origin.y + 1, width: 4, height: 3)
+
+                let cropped = try XCTUnwrap(SkyLight.crop(image, from: windowFrame, to: frame))
+
+                XCTAssertEqual(cropped.width, 4 * scale)
+                XCTAssertEqual(cropped.height, 3 * scale)
+                let pixels = NSBitmapImageRep(cgImage: cropped)
+                for (x, y) in [(0, 0), (4 * scale - 1, 3 * scale - 1)] {
+                    XCTAssertEqual(pixels.colorAt(x: x, y: y), source.colorAt(x: x + 2 * scale, y: y + scale))
+                }
+            }
+        }
+    }
+
+    func testAlreadyClippedWallpaperCaptureKeepsItsScale() throws {
+        let windowFrame = CGRect(x: -1, y: -1, width: 6, height: 5)
+        let frame = CGRect(x: 0, y: 0, width: 4, height: 3)
+        for scale in [1, 2] {
+            let clipped = try makeImage(width: 4 * scale, height: 3 * scale)
+            XCTAssertTrue(SkyLight.crop(clipped, from: windowFrame, to: frame) === clipped)
+            let invalid = try makeImage(width: 4 * scale, height: 3 * scale + 1)
+            XCTAssertNil(SkyLight.crop(invalid, from: windowFrame, to: frame))
+        }
     }
 
     func testCaptureBridgeRejectsMalformedResultsAndRetainsImage() throws {
@@ -94,16 +155,33 @@ final class WorkspaceSwipeBackdropTests: XCTestCase {
         ]
     }
 
+    private func makeCoordinateImage(width: Int, height: Int) throws -> CGImage {
+        let context = try XCTUnwrap(CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        for y in 0 ..< height {
+            for x in 0 ..< width {
+                context.setFillColor(CGColor(
+                    red: CGFloat(x) / CGFloat(width), green: CGFloat(y) / CGFloat(height), blue: 0, alpha: 1
+                ))
+                context.fill(CGRect(x: x, y: y, width: 1, height: 1))
+            }
+        }
+        return try XCTUnwrap(context.makeImage())
+    }
+
     private func makeImage(
         width: Int = 4,
+        height: Int = 3,
         color: CGColor = CGColor(red: 1, green: 0, blue: 0, alpha: 1)
     ) throws -> CGImage {
         let context = try XCTUnwrap(CGContext(
-            data: nil, width: width, height: 3, bitsPerComponent: 8, bytesPerRow: width * 4,
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: width * 4,
             space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
         ))
         context.setFillColor(color)
-        context.fill(CGRect(x: 0, y: 0, width: width, height: 3))
+        context.fill(CGRect(x: 0, y: 0, width: width, height: height))
         return try XCTUnwrap(context.makeImage())
     }
 }

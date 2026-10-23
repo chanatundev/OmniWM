@@ -1,5 +1,5 @@
 -- SPDX-License-Identifier: GPL-2.0-only
--- Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+-- Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 export type Color = string | number
 export type Motion = "none" | "spring" | "bouncy" | "smooth" | "ease"
@@ -94,6 +94,7 @@ export type BarStyle = {
     textColor: string?,
     statsButton: boolean,
     secureInput: boolean,
+    keyboardMode: "normal" | "paused" | "prefix" | "window",
     previews: boolean,
     hideInFullscreen: boolean,
 }
@@ -225,6 +226,64 @@ export type Calendar = {
     access: "full" | "writeOnly" | "denied" | "restricted" | "notDetermined",
     events: { CalendarEvent },
     month: CalendarMonth?,
+}
+
+export type NotificationAction = {
+    id: string,
+    title: string,
+    options: number,
+    textInputButtonTitle: string?,
+    textInputPlaceholder: string?,
+    metadata: any,
+}
+
+export type NotificationAttachment = {
+    id: string,
+    type: string,
+    path: string?,
+    available: boolean,
+    image: string?,
+    metadata: any,
+}
+
+export type NotificationItem = {
+    id: string,
+    bundle: string,
+    title: string,
+    subtitle: string,
+    body: string,
+    date: number?,
+    requestId: string?,
+    thread: string?,
+    category: string?,
+    attachments: { NotificationAttachment },
+    actions: { NotificationAction },
+    userInfo: any,
+    communication: any,
+    metadata: any,
+}
+
+export type Notifications = {
+    state: "loading" | "ready" | "empty" | "accessDenied" | "unavailable" | "queryError" | "malformed" | "incomplete",
+    complete: boolean,
+    items: { NotificationItem },
+    apps: { {
+        bundle: string,
+        name: string?,
+        columns: any,
+        categories: any,
+        categoryMetadata: any,
+        delivered: any,
+        displayed: any,
+        requests: any,
+    } },
+    error: string?,
+    action: {
+        id: string,
+        bundle: string,
+        kind: "reply" | "dismiss",
+        state: string,
+    }?,
 }
 
 export type Reminder = {
@@ -430,6 +489,7 @@ export type Data = {
     reminders: Reminders?,
     badges: { [string]: string },
     menuApp: { pid: number, name: string, bundle: string }?,
+    notifications: Notifications?,
 }
 
 export type Format = {

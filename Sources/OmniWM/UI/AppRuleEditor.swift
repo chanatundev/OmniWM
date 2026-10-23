@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import SwiftUI
 
@@ -198,6 +198,10 @@ struct RuleWindowBehaviorSection: View {
                 }
             }
             .pickerStyle(.segmented)
+
+            SettingsCaption(
+                localized: "Settings left on Automatic or off can come from other rules that match the same window."
+            )
 
             Toggle("Assign to Workspace", isOn: $draft.assignToWorkspaceEnabled)
                 .onChange(of: draft.assignToWorkspaceEnabled) { _, enabled in

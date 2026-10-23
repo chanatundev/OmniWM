@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -22,6 +22,7 @@ extension MouseEventHandler {
 
     var isInteractiveGestureActive: Bool {
         state.isMoving || state.isResizing || isViewportGestureActive
+            || state.nativeTitleBarDrag?.dwindleResizeWorkspaceId != nil
     }
 
     func handleExpiredViewportGesture(
@@ -124,6 +125,9 @@ extension MouseEventHandler {
         if let button = state.capturedInteractionButton, pressedButtons & button.pressedMask == 0 {
             state.capturedInteractionButton = nil
         }
+        if let button = state.parkingEdgePressButton, pressedButtons & button.pressedMask == 0 {
+            state.parkingEdgePressButton = nil
+        }
         if let button = state.capturedOtherMouseButton, pressedButtons & (1 << Int(button)) == 0 {
             state.capturedOtherMouseButton = nil
         }
@@ -137,7 +141,7 @@ extension MouseEventHandler {
         }
     }
 
-    private func finishDwindleResize() {
+    func finishDwindleResize() {
         guard let controller, let engine = controller.dwindleEngine else { return }
         let workspaceId = engine.interactiveResize?.workspaceId
         guard engine.interactiveResizeEnd(), let workspaceId else { return }
@@ -164,8 +168,13 @@ extension MouseEventHandler {
                 gaps: geometry.innerGap
             )
         }
+        settleNiriResize(resizedToken, in: workspaceId)
+    }
+
+    func settleNiriResize(_ token: WindowToken, in workspaceId: WorkspaceDescriptor.ID) {
+        guard let controller else { return }
         controller.workspaceManager.recordLayoutOperation(
-            .interactiveResizeEnded(token: resizedToken),
+            .interactiveResizeEnded(token: token),
             in: workspaceId,
             source: .mouse
         )
@@ -208,6 +217,7 @@ extension MouseEventHandler {
     }
 
     func clearResizeInteractionState() {
+        controller?.resizeOverlay.settleOnLayout()
         state.isResizing = false
         state.activeInteractionSource = nil
         state.resizeLayout = nil
@@ -215,10 +225,18 @@ extension MouseEventHandler {
     }
 
     func completeActiveMove(at location: CGPoint) {
-        if state.moveLayout == .dwindle {
-            finishDwindleMove(at: location)
-        } else {
-            finishNiriMove(at: location)
+        switch classifyMoveLocation(location) {
+        case .sourceDisplay:
+            if state.moveLayout == .dwindle {
+                finishDwindleMove(at: location)
+            } else {
+                finishNiriMove(at: location)
+            }
+        case let .crossDisplay(drop):
+            cancelActiveEngineMove()
+            controller?.performCrossDisplayDrop(drop)
+        case .cancel:
+            cancelActiveEngineMove()
         }
         clearMoveInteractionState()
         NSCursor.arrow.set()

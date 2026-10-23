@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -47,6 +47,7 @@ class NiriContainer: NiriNode {
     private var _cachedWindowNodes: [NiriWindow]?
 
     private(set) var axisSolveRevision: UInt64 = 0
+    var axisSolveMemo: (key: NiriAxisSolveKey, outputs: [NiriAxisSolver.Output])?
 
     override init() {
         super.init()

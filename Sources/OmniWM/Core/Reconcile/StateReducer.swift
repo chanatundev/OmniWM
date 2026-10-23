@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -57,10 +57,6 @@ enum StateReducer {
             monitors.first { $0.id == id }
         }
         let floatingState = entry.floatingState
-        let hasDetachedNiriPlacement = entry.restoreIntent?.detachedNiriContainerSizingState != nil
-        let keepsTilingPlacement = entry.mode == .tiling && entry.restoreIntent?.workspaceId == entry.workspaceId
-        let preservesNiriPlacement = hasDetachedNiriPlacement || keepsTilingPlacement
-        let niriPlacement = preservesNiriPlacement ? entry.restoreIntent?.niriPlacement : nil
         return RestoreIntent(
             topologyProfile: TopologyProfile(monitors: monitors),
             workspaceId: entry.workspaceId,
@@ -69,10 +65,26 @@ enum StateReducer {
             normalizedFloatingOrigin: floatingState?.normalizedOrigin,
             restoreToFloating: entry.mode == .floating,
             rescueEligible: entry.desiredState.rescueEligible || floatingState?.restoreToFloating == true,
-            niriPlacement: niriPlacement,
+            niriPlacement: niriRestorePlacement(for: entry),
             detachedNiriContainerSizingState: entry.restoreIntent?.detachedNiriContainerSizingState,
-            dwindlePlacement: keepsTilingPlacement ? entry.restoreIntent?.dwindlePlacement : nil
+            dwindlePlacement: dwindleRestorePlacement(for: entry)
         )
+    }
+
+    static func niriRestorePlacement(for entry: borrowing WindowState) -> PersistedNiriPlacement? {
+        let hasDetachedNiriPlacement = entry.restoreIntent?.detachedNiriContainerSizingState != nil
+        let staysOnRestoreWorkspace = entry.restoreIntent?.workspaceId == entry.workspaceId
+        let keepsTilingPlacement = entry.mode == .tiling && staysOnRestoreWorkspace
+        let preservesNiriPlacement = hasDetachedNiriPlacement || keepsTilingPlacement
+        let preservedNiriPlacement = preservesNiriPlacement ? entry.restoreIntent?.niriPlacement : nil
+        return staysOnRestoreWorkspace
+            ? preservedNiriPlacement
+            : preservedNiriPlacement?.withoutColumnPosition
+    }
+
+    static func dwindleRestorePlacement(for entry: WindowState) -> PersistedDwindlePlacement? {
+        let keepsTilingPlacement = entry.mode == .tiling && entry.restoreIntent?.workspaceId == entry.workspaceId
+        return keepsTilingPlacement ? entry.restoreIntent?.dwindlePlacement : nil
     }
 
     static func replay(_ trace: [ReconcileTraceRecord]) -> [ActionPlan] {

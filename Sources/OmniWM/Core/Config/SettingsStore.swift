@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Carbon
@@ -65,6 +65,8 @@ final class SettingsStore {
     let borders = BorderSettings()
 
     let overview = OverviewSettings()
+    let windowSwitcher = WindowSwitcherSettings()
+    let keyboardModes = KeyboardModeSettings()
 
     var hotkeyBindings = SettingsStore.defaultExport.hotkeyBindings {
         didSet { scheduleSave() }
@@ -285,6 +287,8 @@ final class SettingsStore {
             self?.scheduleSave()
         }
         statusBar.onChange = { [weak self] in self?.scheduleSave() }
+        windowSwitcher.onChange = { [weak self] in self?.scheduleSave() }
+        keyboardModes.onChange = { [weak self] in self?.scheduleSave() }
         hiddenBar.onChange = { [weak self] in self?.scheduleSave() }
         clipboard.onChange = { [weak self] in self?.scheduleSave() }
         quakeTerminal.onChange = { [weak self] in self?.scheduleSave() }
@@ -421,10 +425,13 @@ extension SettingsStore {
 
         workspaces.configurations = WorkspaceSettings.normalizedConfigurations(export.workspaceConfigurations)
         workspaces.defaultLayoutType = export.defaultLayoutType
+        workspaces.autoBackAndForth = export.workspaceAutoBackAndForth
 
         borders.apply(export.borders)
 
         overview.apply(export.overview, baseline: SettingsStore.defaultExport.overview)
+        windowSwitcher.apply(export.windowSwitcher)
+        keyboardModes.apply(export.keyboardModes)
 
         hyperKeyModifiersStorage = export.hyperKeyModifiers
         KeySymbolMapper.setHyperKeyModifiers(export.hyperKeyModifiers)

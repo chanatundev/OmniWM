@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -15,6 +15,8 @@ struct CanonicalTOMLConfig: Codable, Equatable {
     var dwindle: SettingsExport.Dwindle
     var borders: SettingsExport.Borders
     var overview: SettingsExport.Overview
+    var windowSwitcher: SettingsExport.WindowSwitcher
+    var keyboardModes: SettingsExport.KeyboardModes
     var workspaceBar: SettingsExport.WorkspaceBar
     var island: SettingsExport.Island
     var gestures: SettingsExport.Gestures
@@ -44,6 +46,7 @@ struct CanonicalTOMLConfig: Codable, Equatable {
         var animationsEnabled: Bool
         var animationSpeed: Double?
         var language: String?
+        var workspaceAutoBackAndForth: Bool?
     }
 
     struct Monitors: Codable, Equatable {
@@ -72,6 +75,7 @@ extension CanonicalTOMLConfig {
         general = try container.decode(General.self, forKey: .general)
         KeySymbolMapper.setHyperKeyModifiers(general.hyperKeyModifiers)
         focus = try container.decode(SettingsExport.Focus.self, forKey: .focus)
+        focus.edgeNavigationInterval = FocusSettings.normalizedEdgeNavigationInterval(focus.edgeNavigationInterval)
         mouseWarp = try container.decode(SettingsExport.MouseWarp.self, forKey: .mouseWarp)
         routing = try container.decode(SettingsExport.Routing.self, forKey: .routing)
         monitors = try container.decodeIfPresent(Monitors.self, forKey: .monitors)
@@ -82,6 +86,10 @@ extension CanonicalTOMLConfig {
         dwindle = try container.decode(SettingsExport.Dwindle.self, forKey: .dwindle)
         borders = try container.decode(SettingsExport.Borders.self, forKey: .borders)
         overview = try container.decode(SettingsExport.Overview.self, forKey: .overview)
+        windowSwitcher = try container.decodeIfPresent(SettingsExport.WindowSwitcher.self, forKey: .windowSwitcher)
+            ?? SettingsExport.WindowSwitcher()
+        keyboardModes = try container.decodeIfPresent(SettingsExport.KeyboardModes.self, forKey: .keyboardModes)
+            ?? SettingsExport.KeyboardModes()
         workspaceBar = try container.decode(SettingsExport.WorkspaceBar.self, forKey: .workspaceBar)
         island = try container.decodeIfPresent(SettingsExport.Island.self, forKey: .island) ?? .defaults()
         gestures = try container.decode(SettingsExport.Gestures.self, forKey: .gestures)
@@ -125,9 +133,11 @@ extension CanonicalTOMLConfig {
             ipcEnabled: export.ipcEnabled,
             animationsEnabled: export.animationsEnabled,
             animationSpeed: AnimationSpeed.normalized(export.animationSpeed),
-            language: export.language
+            language: export.language,
+            workspaceAutoBackAndForth: export.workspaceAutoBackAndForth
         )
         focus = export.focus
+        focus.edgeNavigationInterval = FocusSettings.normalizedEdgeNavigationInterval(focus.edgeNavigationInterval)
         mouseWarp = export.mouseWarp
         routing = export.routing
         monitors = export.monitorRanking.isEmpty ? nil : Monitors(ranking: export.monitorRanking)
@@ -136,6 +146,8 @@ extension CanonicalTOMLConfig {
         dwindle = export.dwindle
         borders = export.borders
         overview = export.overview
+        windowSwitcher = export.windowSwitcher
+        keyboardModes = export.keyboardModes
         workspaceBar = export.workspaceBar
         island = export.island
         gestures = export.gestures
@@ -168,6 +180,9 @@ extension CanonicalTOMLConfig {
             defaultLayoutType: general.defaultLayoutType,
             borders: borders,
             overview: overviewForExport(),
+            windowSwitcher: windowSwitcher,
+            keyboardModes: keyboardModes,
+            workspaceAutoBackAndForth: general.workspaceAutoBackAndForth ?? false,
             hotkeyBindings: hotkeys,
             systemHyperTrigger: general.systemHyperTrigger,
             hyperKeyModifiers: general.hyperKeyModifiers,
@@ -221,6 +236,9 @@ extension CanonicalTOMLConfig {
         gestures.windowResizeEnabled = gestures.windowResizeEnabled ?? false
         gestures.windowResizeFingerCount = gestures.windowResizeFingerCount ?? .three
         gestures.windowGestureSensitivity = gestures.windowGestureSensitivity ?? 1.0
+        gestures.resizePreviewStyle = gestures.resizePreviewStyle ?? .live
+        gestures.dwindleGroupDragAcrossDisplays = gestures.dwindleGroupDragAcrossDisplays ?? .group
+        gestures.adoptNativeResize = gestures.adoptNativeResize ?? false
         return gestures
     }
 }

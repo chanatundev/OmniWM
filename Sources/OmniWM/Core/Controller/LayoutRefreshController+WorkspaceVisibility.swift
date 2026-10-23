@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -29,8 +29,8 @@ extension LayoutRefreshController {
         guard let controller else { return }
         var allEntries: [(workspaceId: WorkspaceDescriptor.ID, windowId: Int)] = []
         for workspace in controller.workspaceManager.workspaces {
-            for entry in controller.workspaceManager.entries(in: workspace.id) {
-                allEntries.append((workspace.id, entry.windowId))
+            controller.workspaceManager.windowQueries.forEachToken(in: workspace.id) { token in
+                allEntries.append((workspace.id, token.windowId))
             }
         }
         controller.axManager.updateInactiveWorkspaceWindows(
@@ -45,10 +45,10 @@ extension LayoutRefreshController {
         let topology = controller.workspaceManager.spaceTopology
         guard topology.isPopulated else { return [] }
         var result: Set<Int> = []
-        for entry in controller.workspaceManager.allEntries()
-            where topology.isWindowOnKnownInactiveSpace(entry.windowId)
-        {
-            result.insert(entry.windowId)
+        controller.workspaceManager.windowQueries.forEachToken { token in
+            if topology.isWindowOnKnownInactiveSpace(token.windowId) {
+                result.insert(token.windowId)
+            }
         }
         return result
     }
@@ -146,7 +146,14 @@ extension LayoutRefreshController {
             guard let monitor = controller.workspaceManager.monitor(for: snapshot.workspace.id) else { continue }
             targets += hideTargets(snapshot.entries, monitor: monitor, side: preferredSides[monitor.id] ?? .right)
         }
-        applyHides(targets, reason: .workspaceInactive, hiddenPlacementMonitors: hiddenPlacementMonitors)
+        let activeWindowIds = workspaceEntries.filter { activeWorkspaceIds.contains($0.workspace.id) }
+            .flatMap { $0.entries.map(\.windowId) }
+        applyHides(
+            targets,
+            reason: .workspaceInactive,
+            hiddenPlacementMonitors: hiddenPlacementMonitors,
+            afterFrameWritesOf: Set(activeWindowIds)
+        )
     }
 
     private func hideTargets(_ entries: [WindowState], monitor: Monitor, side: HideSide) -> [HideTarget] {

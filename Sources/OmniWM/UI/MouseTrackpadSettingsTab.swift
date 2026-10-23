@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import SwiftUI
@@ -84,7 +84,21 @@ struct MouseTrackpadSettingsTab: View {
             .id("Left Mouse Move Modifier")
 
             SettingsCaption(
-                localized: "Hold this modifier and left-drag to swap tiled windows. Add Shift to insert into a Niri column or beside a Dwindle tile; choose Off to leave modified drags to apps."
+                localized: "Hold this modifier and left-drag tiled windows. Drop at another tile's center to swap, or near one of its edges to insert on that side. In Dwindle, you can also insert between existing splits or at a workspace edge. Choose Off to leave modified drags to apps."
+            )
+
+            Picker(
+                "Dwindle Group Across Displays",
+                selection: Bindable(settings.gestures).dwindleGroupDragAcrossDisplays
+            ) {
+                ForEach(DwindleGroupDrag.allCases) { mode in
+                    Text(mode.localizedDisplayName).tag(mode)
+                }
+            }
+            .id("Dwindle Group Across Displays")
+
+            SettingsCaption(
+                localized: "Choose what a modifier drag of a Dwindle tab group moves when you drop it on another display. A whole group dropped into Niri becomes one tabbed column."
             )
 
             Picker("Right Mouse Resize Modifier", selection: Bindable(settings.gestures).mouseResizeModifierKey) {
@@ -95,6 +109,24 @@ struct MouseTrackpadSettingsTab: View {
             .id("Right Mouse Resize Modifier")
 
             SettingsCaption(localized: "Hold this modifier combo + right mouse drag to resize tiled windows")
+
+            Toggle("Keep Native Edge Resizes", isOn: Bindable(settings.gestures).adoptNativeResize)
+                .id("Keep Native Edge Resizes")
+
+            SettingsCaption(
+                localized: "Drag a tiled window's edge or corner without a modifier. Dwindle resizes neighbouring windows while you drag; Niri refits them after you release. Moving a window by its title bar still snaps it back."
+            )
+
+            Picker("Resize Preview", selection: Bindable(settings.gestures).resizePreviewStyle) {
+                ForEach(ResizePreviewStyle.allCases) { style in
+                    Text(style.localizedDisplayName).tag(style)
+                }
+            }
+            .id("Resize Preview")
+
+            SettingsCaption(
+                localized: "Applies to modifier-based mouse resizing, trackpad resize gestures, and Niri keyboard resizing. Native edge or corner drags bypass previews; Dwindle neighbours always resize live. Window Snapshot stretches a still image and needs Screen Recording. Glass Placeholder shows app icons without capture. With either preview, windows get their final size when resizing ends."
+            )
         }
         .id("Mouse Move & Resize")
     }
@@ -110,6 +142,22 @@ struct MouseTrackpadSettingsTab: View {
             Toggle("Raise Window When Focus Follows Mouse", isOn: Bindable(settings.focus).raiseOnMouseFocus)
                 .id("Raise Window When Focus Follows Mouse")
                 .disabled(!settings.focus.followsMouse)
+
+            SettingsSliderRow(
+                label: String(localized: "Edge navigation interval"),
+                value: Bindable(settings.focus).edgeNavigationInterval,
+                range: FocusSettings.edgeNavigationIntervalRange,
+                step: FocusSettings.edgeNavigationIntervalStep,
+                valueText: String(
+                    localized: "\(settings.focus.edgeNavigationInterval.formatted(.number.precision(.fractionLength(0 ... 2))))s"
+                )
+            )
+            .id("Edge navigation interval")
+            .disabled(!settings.focus.followsMouse)
+
+            SettingsCaption(
+                localized: "Hover at a Niri screen edge to move one column after this interval, then repeat while the pointer stays on the edge or preview. Move away to stop."
+            )
 
             Picker("Focus Lock Modifier", selection: Bindable(settings.focus).lockModifier) {
                 ForEach(FocusLockModifier.allCases, id: \.self) { key in

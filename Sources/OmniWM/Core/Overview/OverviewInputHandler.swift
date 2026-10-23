@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Carbon
@@ -144,6 +144,18 @@ final class OverviewInputHandler {
     ) -> KeyHandlingResult {
         let relevantModifiers = modifierFlags.intersection([.shift, .command, .control, .option])
 
+        if relevantModifiers == .command,
+           KeyEquivalent.matches(
+               "w",
+               ansiKeyCode: Int(KeyCode.closeWindow),
+               keyCode: keyCode,
+               charactersIgnoringModifiers: charactersIgnoringModifiers
+           )
+        {
+            guard !isRepeat else { return .init(action: .consume, shouldConsume: true) }
+            return .init(action: .closeSelection, shouldConsume: true)
+        }
+
         switch keyCode {
         case KeyCode.escape:
             guard !isRepeat else { return .init(action: .consume, shouldConsume: true) }
@@ -168,10 +180,6 @@ final class OverviewInputHandler {
         case KeyCode.delete:
             guard relevantModifiers.isEmpty else { break }
             return .init(action: .deleteBackward, shouldConsume: true)
-        case KeyCode.closeWindow:
-            guard relevantModifiers == .command else { break }
-            guard !isRepeat else { return .init(action: .consume, shouldConsume: true) }
-            return .init(action: .closeSelection, shouldConsume: true)
         default:
             break
         }

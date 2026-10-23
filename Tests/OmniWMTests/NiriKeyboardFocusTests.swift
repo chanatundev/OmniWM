@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 @testable import OmniWM
@@ -417,7 +417,7 @@ final class NiriKeyboardFocusTests: XCTestCase {
 
             let target = fixture.windows[3].token
             XCTAssertEqual(fixture.state.selectedNodeId, fixture.windows[3].id)
-            XCTAssertEqual(fixture.recorder.operations, [.activate(target.pid), .focus(target), .raise])
+            XCTAssertEqual(fixture.recorder.operations, [.focus(target), .raise])
         }
     }
 
@@ -427,7 +427,7 @@ final class NiriKeyboardFocusTests: XCTestCase {
 
             fixture.controller.focusWindow(target)
 
-            XCTAssertEqual(fixture.recorder.operations, [.activate(target.pid), .focus(target), .raise])
+            XCTAssertEqual(fixture.recorder.operations, [.focus(target), .raise])
             XCTAssertEqual(fixture.controller.intentLedger.activeManagedRequest?.token, target)
         }
     }

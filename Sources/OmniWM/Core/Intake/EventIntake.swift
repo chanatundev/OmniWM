@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -20,6 +20,8 @@ enum IntakeEvent: Sendable {
     case mouseMoved(location: CGPoint, modifiersRawValue: UInt64, windowIdUnderPointer: Int?)
     case mouseScroll(MouseScrollIntake)
     case nativeFullscreenTransitionExpired(originalToken: WindowToken, generation: Int)
+    case pointerEdgeCrossed(target: Monitor.ID)
+    case pointerEdgeOwnershipChanged
     case secureInputStateMayHaveChanged(session: UInt32)
     case systemSleep
     case systemWake

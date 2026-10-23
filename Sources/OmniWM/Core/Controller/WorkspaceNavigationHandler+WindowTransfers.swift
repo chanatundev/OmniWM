@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -39,6 +39,7 @@ extension WorkspaceNavigationHandler {
         var progress = WindowEngineTransferProgress()
         if controller.workspaceManager.windowMode(for: token) == .floating {
             controller.reassignManagedWindow(token, to: targetWsId)
+            relocateFloatingWindow(token, to: targetWsId, controller: controller)
             if let sourceWsId {
                 recordLayoutOperation(.windowMovedToWorkspace(token: token, to: targetWsId), in: sourceWsId)
             }
@@ -58,6 +59,38 @@ extension WorkspaceNavigationHandler {
         }
 
         return WindowTransferResult(succeeded: succeeded, newSourceFocusToken: progress.newSourceFocusToken)
+    }
+
+    private func relocateFloatingWindow(
+        _ token: WindowToken,
+        to workspaceId: WorkspaceDescriptor.ID,
+        controller: WMController
+    ) {
+        let workspaceManager = controller.workspaceManager
+        guard let monitor = workspaceManager.monitor(for: workspaceId),
+              let state = workspaceManager.floatingState(for: token),
+              state.referenceMonitorId != monitor.id,
+              let frame = workspaceManager.resolvedFloatingFrame(for: token, preferredMonitor: monitor)
+        else { return }
+        workspaceManager.updateFloatingGeometry(
+            frame: frame,
+            for: token,
+            referenceMonitor: monitor,
+            restoreToFloating: state.restoreToFloating
+        )
+        controller.layoutRefreshController.enqueueRefresh(
+            .init(
+                kind: .immediateRelayout,
+                reason: .workspaceTransition,
+                affectedWorkspaceIds: [workspaceId],
+                workspaceMonitorRelocations: [
+                    .init(
+                        relocation: WorkspaceFloatingRelocation(workspaceId: workspaceId, token: token, frame: frame),
+                        allowsTerminalRecovery: true
+                    )
+                ]
+            )
+        )
     }
 
     func moveWindowToAdjacentWorkspace(direction: Direction) {
@@ -267,9 +300,14 @@ extension WorkspaceNavigationHandler {
                     )
                 }
 
-                if targetIsDwindle, engine.findNode(for: token, in: sourceWsId) != nil {
+                if targetIsDwindle, let currentNode = engine.findNode(for: token, in: sourceWsId) {
+                    let removedColumnIndex = engine.column(of: currentNode)
+                        .flatMap { $0.windowNodes.count == 1 ? engine.columnIndex(of: $0, in: sourceWsId) : nil }
                     controller.workspaceManager.captureDetachedNiriPlacement(for: token, in: sourceWsId)
                     engine.removeWindow(token: token, in: sourceWsId)
+                    if let removedColumnIndex, removedColumnIndex < sourceState.activeColumnIndex {
+                        sourceState.activeColumnIndex -= 1
+                    }
                 }
 
                 if let selectedId = sourceState.selectedNodeId,

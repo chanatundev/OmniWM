@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -49,16 +49,25 @@ actor IPCApplicationBridge {
             return IPCResponse(failing: request, code: .unauthorized)
         }
 
-        let versionResult = await versionResult()
-
-        if let mismatch = protocolMismatchResponse(for: request, versionResult: versionResult) {
-            return mismatch
+        if request.version != OmniWMIPCProtocol.version {
+            let versionResult = await versionResult()
+            if request.kind == .version {
+                return .success(id: request.id, kind: .version, result: versionResult)
+            }
+            return IPCResponse(failing: request, code: .protocolMismatch, result: versionResult)
         }
 
+        return await payloadResponse(for: request)
+    }
+
+    private func payloadResponse(for request: IPCRequest) async -> IPCResponse {
         switch request.payload {
         case .none:
+            if request.kind == .version {
+                return .success(id: request.id, kind: .version, result: await versionResult())
+            }
             return await MainActor.run {
-                responseWithoutPayload(for: request, versionResult: versionResult)
+                responseWithoutPayload(for: request)
             }
         case let .command(command):
             let result = await commandResult { $0.handle(command) }
@@ -86,7 +95,17 @@ actor IPCApplicationBridge {
             let result = await commandResult { $0.handle(window) }
             return Self.response(for: result, id: request.id, kind: .window)
         case let .windowMark(windowMark):
-            return await Self.windowMarkResponse(for: windowMark, id: request.id, controller: controller)
+            return await Self.windowMarkResponse(
+                for: windowMark,
+                id: request.id,
+                controller: controller,
+                sessionToken: sessionToken
+            )
+        case let .windowGather(windowGather):
+            return await MainActor.run {
+                IPCWindowGatherRequestExecutor(controller: controller, sessionToken: sessionToken)
+                    .response(for: windowGather, id: request.id)
+            }
         case let .shell(shell):
             return await Self.shellResponse(for: shell, id: request.id, controller: controller)
         case let .subscribe(subscribe):
@@ -105,16 +124,8 @@ actor IPCApplicationBridge {
         )
     }
 
-    private func protocolMismatchResponse(for request: IPCRequest, versionResult: IPCResult) -> IPCResponse? {
-        guard request.version != OmniWMIPCProtocol.version else { return nil }
-        if request.kind == .version {
-            return .success(id: request.id, kind: .version, result: versionResult)
-        }
-        return IPCResponse(failing: request, code: .protocolMismatch, result: versionResult)
-    }
-
     @MainActor
-    private func responseWithoutPayload(for request: IPCRequest, versionResult: IPCResult) -> IPCResponse {
+    private func responseWithoutPayload(for request: IPCRequest) -> IPCResponse {
         let queryRouter = IPCQueryRouter(
             controller: controller,
             appVersion: appVersion,
@@ -124,15 +135,15 @@ actor IPCApplicationBridge {
         switch request.kind {
         case .ping:
             return .success(id: request.id, kind: .ping, result: IPCResult(pong: queryRouter.pingResult()))
-        case .version:
-            return .success(id: request.id, kind: .version, result: versionResult)
-        case .command,
+        case .version,
+             .command,
              .capture,
              .query,
              .rule,
              .workspace,
              .window,
              .windowMark,
+             .windowGather,
              .shell,
              .subscribe:
             return IPCResponse(failing: request, code: .invalidRequest)
@@ -141,14 +152,10 @@ actor IPCApplicationBridge {
 
     private func versionResult() async -> IPCResult {
         let executableSHA256 = await OmniWMBuildInfo.executableSHA256.value
-        return await MainActor.run {
-            let queryRouter = IPCQueryRouter(
-                controller: controller,
-                appVersion: appVersion,
-                sessionToken: sessionToken
-            )
-            return IPCResult(version: queryRouter.versionResult(executableSHA256: executableSHA256))
-        }
+        return IPCResult(version: IPCQueryRouter.versionResult(
+            appVersion: appVersion,
+            executableSHA256: executableSHA256
+        ))
     }
 
     private func commandResult(

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 @testable import OmniWM
@@ -46,6 +46,36 @@ final class ShellBlurTests: XCTestCase {
         ShellLayerScene.engineQueue.sync {
             XCTAssertNotNil(scene.backdrops.values.first?.tint.backgroundColor)
         }
+    }
+
+    func testFillOnlyRepaintKeepsBackdropFilters() throws {
+        guard !NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency else {
+            throw XCTSkip("Reduce Transparency replaces materials with solid fills")
+        }
+        let widget = try ShellRenderedWidget(name: "blurfill", source: """
+        function render(ctx)
+            return ui.stack{ w = 100, h = 80, material = 'regular',
+                fill = ctx.state.on and '#00ff0040' or '#ff000040',
+                onClick = function(next) next.state.on = true end }
+        end
+        """)
+        widget.render(ShellBarData())
+        let node = try XCTUnwrap(widget.tree().first)
+        let scene = widget.surface.scene
+        let state = {
+            ShellLayerScene.engineQueue.sync { () -> ([NSObject], CGColor?) in
+                let entry = scene.backdrops.values.first
+                return (entry?.backdrop.filters as? [NSObject] ?? [], entry?.tint.backgroundColor)
+            }
+        }
+        let (before, beforeTint) = state()
+        XCTAssertEqual(before.count, 2)
+        widget.invoke(node.content.action)
+        widget.render(ShellBarData())
+        let (after, afterTint) = state()
+        XCTAssertNotEqual(beforeTint, afterTint)
+        XCTAssertEqual(after.count, 2)
+        XCTAssertTrue(zip(before, after).allSatisfy { $0 === $1 })
     }
 
     func testInvalidBlurAndTextureDeclarationsAreRejected() throws {

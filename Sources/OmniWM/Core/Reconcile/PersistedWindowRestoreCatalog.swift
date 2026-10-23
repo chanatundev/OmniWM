@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -90,6 +90,14 @@ struct PersistedNiriPlacement: Codable, Equatable, Sendable {
     let tileIndex: Int
     let column: PersistedNiriColumnState
     let window: PersistedNiriWindowState
+
+    var hasColumnPosition: Bool {
+        columnIndex >= 0 && tileIndex >= 0
+    }
+
+    var withoutColumnPosition: PersistedNiriPlacement {
+        PersistedNiriPlacement(columnIndex: -1, tileIndex: -1, column: column, window: window)
+    }
 }
 
 struct PersistedDwindleSplitStep: Codable, Equatable, Sendable {

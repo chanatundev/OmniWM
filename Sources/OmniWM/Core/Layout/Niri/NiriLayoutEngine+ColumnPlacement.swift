@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -155,13 +155,15 @@ extension NiriLayoutEngine {
                     orientation: orientation
                 )
                 let activeWindow = projectedActiveWindow(in: projectedColumn)
-                for window in projectedColumn.windows where window !== activeWindow {
-                    result.hiddenHandles[window.token] = parkEdge.encodedHideSide
+                let windowSpan = projectedColumn.windows.span
+                for index in windowSpan.indices where windowSpan[index] !== activeWindow {
+                    result.hiddenHandles[windowSpan[index].token] = parkEdge.encodedHideSide
                 }
             }
         case let .hidden(hiddenEdge):
-            for window in projectedColumn.windows {
-                result.hiddenHandles[window.token] = hiddenEdge.encodedHideSide
+            let windowSpan = projectedColumn.windows.span
+            for index in windowSpan.indices {
+                result.hiddenHandles[windowSpan[index].token] = hiddenEdge.encodedHideSide
             }
             renderedContainerRect = layoutArea.hiddenRenderedContainerRect(
                 canonicalRect: visibility.canonicalRect,

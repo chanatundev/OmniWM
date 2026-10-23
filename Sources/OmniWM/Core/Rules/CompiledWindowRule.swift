@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -48,6 +48,11 @@ struct CompiledWindowRule {
              .builtIn:
             true
         }
+    }
+
+    func outranks(_ other: CompiledWindowRule) -> Bool {
+        rule.specificity > other.rule.specificity
+            || (rule.specificity == other.rule.specificity && order < other.order)
     }
 
     var explicitlyIncludesNonstandardSurface: Bool {

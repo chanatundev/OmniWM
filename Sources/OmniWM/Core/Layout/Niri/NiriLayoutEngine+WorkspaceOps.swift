@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -21,55 +21,39 @@ extension NiriLayoutEngine {
         targetState: inout ViewportState
     ) -> WorkspaceMoveResult? {
         assertSanctionedMutation()
-        guard sourceWorkspaceId != targetWorkspaceId else { return nil }
-
-        guard let sourceWorkspaceState = states[sourceWorkspaceId],
-              let sourceColumn = findColumn(containing: window, in: sourceWorkspaceId)
+        guard sourceWorkspaceId != targetWorkspaceId,
+              states[sourceWorkspaceId] != nil,
+              findColumn(containing: window, in: sourceWorkspaceId) != nil
         else {
             return nil
         }
 
-        let wasSingleWindow = singleWindowLayoutContext(in: sourceWorkspaceId) != nil
         let targetWorkspaceState = ensureState(for: targetWorkspaceId)
-        let targetRoot = targetWorkspaceState.root
-
-        let retainedSelection = sourceState.selectedNodeId.flatMap { selectedId in
-            selectedId != window.id && findNode(by: selectedId, in: sourceWorkspaceId) != nil ? selectedId : nil
-        }
-        let fallbackSelection = retainedSelection
-            ?? fallbackSelectionOnRemoval(removing: window.id, in: sourceWorkspaceId)
-
         if targetWorkspaceState.nodesByToken[window.token] != nil {
             removeWindow(token: window.token, in: targetWorkspaceId)
         }
         precondition(targetWorkspaceState.nodesByToken[window.token] == nil)
 
-        cancelInteractions(for: Set([window.id]), in: sourceWorkspaceId)
-
-        window.detach()
-        sourceWorkspaceState.unindex(window)
+        guard let sizing = detachWindowForTransfer(window, from: sourceWorkspaceId, sourceState: &sourceState) else {
+            return nil
+        }
 
         let targetColumn: NiriContainer
-        if let existingColumn = claimEmptyColumnIfWorkspaceEmpty(in: targetRoot) {
+        if let existingColumn = claimEmptyColumnIfWorkspaceEmpty(in: targetWorkspaceState.root) {
             targetColumn = existingColumn
         } else {
             let newColumn = NiriContainer()
-            targetRoot.appendChild(newColumn)
+            targetWorkspaceState.root.appendChild(newColumn)
             targetColumn = newColumn
         }
-        copyContainerSizingState(from: sourceColumn, to: targetColumn)
+        initializeNewContainerSizing(targetColumn, in: targetWorkspaceId, initialState: sizing)
         targetColumn.appendChild(window)
         targetWorkspaceState.index(window)
-
-        cleanupEmptyColumn(sourceColumn, in: sourceWorkspaceId, state: &sourceState)
-        clearManualSpanOverridesOnSingleWindowEntry(in: sourceWorkspaceId, wasSingleWindow: wasSingleWindow)
-
-        sourceState.selectedNodeId = fallbackSelection
 
         targetState.selectedNodeId = window.id
 
         return WorkspaceMoveResult(
-            newFocusNodeId: fallbackSelection,
+            newFocusNodeId: sourceState.selectedNodeId,
             movedToken: window.token,
             targetWorkspaceId: targetWorkspaceId
         )
@@ -105,8 +89,9 @@ extension NiriLayoutEngine {
         removeEmptyColumnsIfWorkspaceEmpty(in: targetRoot)
 
         let allCols = columns(in: sourceWorkspaceId)
+        let sourceColumnIndex = columnIndex(of: column, in: sourceWorkspaceId)
         var fallbackSelection: NodeId?
-        if let colIdx = columnIndex(of: column, in: sourceWorkspaceId) {
+        if let colIdx = sourceColumnIndex {
             if colIdx > 0 {
                 fallbackSelection = allCols[colIdx - 1].firstChild()?.id
             } else if allCols.count > 1 {
@@ -117,6 +102,9 @@ extension NiriLayoutEngine {
         cancelInteractions(for: Set(movedWindows.map(\.id)), in: sourceWorkspaceId)
 
         column.detach()
+        if let sourceColumnIndex, sourceColumnIndex < sourceState.activeColumnIndex {
+            sourceState.activeColumnIndex -= 1
+        }
         targetRoot.appendChild(column)
         column.invalidateCachedPrimarySpan(orientation: destination.orientation)
 

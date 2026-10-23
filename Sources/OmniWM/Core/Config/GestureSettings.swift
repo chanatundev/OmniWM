@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Carbon
@@ -128,6 +128,21 @@ final class GestureSettings {
         }
     }
 
+    var resizePreviewStyle = GestureSettings.defaults.resizePreviewStyle ?? .live {
+        didSet { notifyChange() }
+    }
+
+    var dwindleGroupDragAcrossDisplays = GestureSettings.defaults.dwindleGroupDragAcrossDisplays ?? .group {
+        didSet { notifyChange() }
+    }
+
+    var adoptNativeResize = GestureSettings.defaults.adoptNativeResize ?? false {
+        didSet {
+            guard oldValue != adoptNativeResize else { return }
+            notifyChange()
+        }
+    }
+
     var workspaceSwipeAxisLockedToVertical: Bool {
         scrollEnabled && workspaceSwipeFingerCount.rawValue == fingerCount.rawValue
     }
@@ -155,7 +170,10 @@ final class GestureSettings {
             windowMoveFingerCount: windowMoveFingerCount,
             windowResizeEnabled: windowResizeEnabled,
             windowResizeFingerCount: windowResizeFingerCount,
-            windowGestureSensitivity: windowGestureSensitivity
+            windowGestureSensitivity: windowGestureSensitivity,
+            resizePreviewStyle: resizePreviewStyle,
+            dwindleGroupDragAcrossDisplays: dwindleGroupDragAcrossDisplays,
+            adoptNativeResize: adoptNativeResize
         )
     }
 
@@ -185,6 +203,9 @@ final class GestureSettings {
         windowResizeEnabled = gestures.windowResizeEnabled ?? false
         windowResizeFingerCount = gestures.windowResizeFingerCount ?? .three
         windowGestureSensitivity = gestures.windowGestureSensitivity ?? 1.0
+        resizePreviewStyle = gestures.resizePreviewStyle ?? .live
+        dwindleGroupDragAcrossDisplays = gestures.dwindleGroupDragAcrossDisplays ?? .group
+        adoptNativeResize = gestures.adoptNativeResize ?? false
         isApplying = false
         if export() != previous {
             notifyChange()

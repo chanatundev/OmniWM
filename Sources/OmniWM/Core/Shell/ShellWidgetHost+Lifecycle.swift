@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -363,6 +363,7 @@ extension ShellWidgetHost {
                 media: resources.media,
                 calendar: resources.calendar,
                 devices: resources.devices,
+                notifications: resources.notifications,
                 onBadgesDemandChange: { [weak self] in self?.onBadgesDemandChange?($0) },
                 deliver: { [weak self] data in
                     self?.broadcast(data)

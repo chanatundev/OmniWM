@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -175,10 +175,19 @@ extension WorldStore {
         engine: NiriLayoutEngine
     ) {
         guard let node = engine.findNode(for: token, in: workspaceId),
-              var state = viewports[workspaceId],
-              state.selectedNodeId == node.id
+              var state = viewports[workspaceId]
         else { return }
-        state.selectedNodeId = engine.fallbackSelectionOnRemoval(removing: node.id, in: workspaceId)
+        if state.selectedNodeId == node.id {
+            state.selectedNodeId = engine.fallbackSelectionOnRemoval(removing: node.id, in: workspaceId)
+            applyViewportPlan(.set(workspaceId: workspaceId, state: state))
+            return
+        }
+        guard let column = engine.column(of: node),
+              column.windowNodes.count == 1,
+              let removedColumnIndex = engine.columnIndex(of: column, in: workspaceId),
+              removedColumnIndex < state.activeColumnIndex
+        else { return }
+        state.activeColumnIndex -= 1
         applyViewportPlan(.set(workspaceId: workspaceId, state: state))
     }
 

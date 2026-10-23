@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -277,11 +277,15 @@ extension IPCAutomationManifest {
     }
 
     public static func workspaceActionDescriptors(matching actionWords: [String]) -> [IPCWorkspaceActionDescriptor] {
-        workspaceActionDescriptors
-            .sorted { $0.path < $1.path }
-            .filter { descriptor in
-                guard actionWords.count >= descriptor.actionWords.count else { return false }
-                return Array(actionWords.prefix(descriptor.actionWords.count)) == descriptor.actionWords
-            }
+        let catalog = workspaceActionDescriptors
+        var matches: [IPCWorkspaceActionDescriptor] = []
+        for index in catalog.indices
+            where actionWords.count >= catalog[index].actionWords.count
+            && actionWords.starts(with: catalog[index].actionWords)
+        {
+            matches.append(catalog[index])
+        }
+        matches.sort { $0.path < $1.path }
+        return matches
     }
 }

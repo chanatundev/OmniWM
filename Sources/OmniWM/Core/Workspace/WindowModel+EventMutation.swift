@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -51,6 +51,27 @@ extension WindowModel {
 
         default:
             preconditionFailure("Expected a WindowModel field mutation")
+        }
+    }
+
+    func applyNiriPlacements(_ placements: [WindowToken: PersistedNiriPlacement], monitors: [Monitor]) {
+        for (token, placement) in placements {
+            guard let entry = self.entry(for: token), entry.mode == .tiling else { continue }
+            var restoreIntent = StateReducer.restoreIntent(for: entry, monitors: monitors)
+            restoreIntent.niriPlacement = placement
+            restoreIntent.detachedNiriContainerSizingState = nil
+            guard entry.restoreIntent != restoreIntent else { continue }
+            self.setRestoreIntent(restoreIntent, for: token)
+        }
+    }
+
+    func applyDwindlePlacements(_ placements: [WindowToken: PersistedDwindlePlacement], monitors: [Monitor]) {
+        for (token, placement) in placements {
+            guard let entry = self.entry(for: token), entry.mode == .tiling else { continue }
+            var restoreIntent = StateReducer.restoreIntent(for: entry, monitors: monitors)
+            restoreIntent.dwindlePlacement = placement
+            guard entry.restoreIntent != restoreIntent else { continue }
+            self.setRestoreIntent(restoreIntent, for: token)
         }
     }
 }

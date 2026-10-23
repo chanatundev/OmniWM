@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -81,6 +81,7 @@ extension NiriLayoutHandler {
         context: NiriLayoutDiffContext
     ) -> WorkspaceLayoutDiff {
         var diff = WorkspaceLayoutDiff()
+        let workspace = context.engine.states[context.workspaceId]
         for window in windows {
             let token = window.token
             if window.isNativeFullscreenSuspended {
@@ -113,7 +114,9 @@ extension NiriLayoutHandler {
                 diff.restoreChanges.append(.init(token: token, hiddenState: hiddenState))
             }
             guard let frame = frames[token] else { continue }
-            diff.frameChanges.append(layoutFrameChange(token: token, frame: frame, context: context))
+            diff.frameChanges.append(layoutFrameChange(
+                token: token, frame: frame, node: workspace?.nodesByToken[token], context: context
+            ))
         }
         return diff
     }
@@ -142,9 +145,9 @@ extension NiriLayoutHandler {
     private func layoutFrameChange(
         token: WindowToken,
         frame: CGRect,
+        node: NiriWindow?,
         context: NiriLayoutDiffContext
     ) -> LayoutFrameChange {
-        let node = context.engine.findNode(for: token, in: context.workspaceId)
         var change = LayoutFrameChange(
             token: token,
             frame: frame,
@@ -202,7 +205,7 @@ extension NiriLayoutHandler {
             workingFrame: pass.insetFrame,
             singleWindowFrame: snapshot.monitor.workingFrame,
             borderSafeFillFrame: snapshot.monitor.borderSafeFillFrame,
-            fullscreenLayoutFrame: snapshot.monitor.fullscreenLayoutFrame,
+            fullscreenLayoutFrame: snapshot.fullscreenLayoutFrame,
             viewFrame: snapshot.monitor.frame,
             scale: snapshot.monitor.scale
         )

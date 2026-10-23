@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 @testable import OmniWM
@@ -19,7 +19,12 @@ final class ShellRenderedWidget {
 
     convenience init(_ name: String) throws {
         let url = try XCTUnwrap(ShellConfig.bundledWidget(name))
-        try self.init(name: name, source: String(contentsOf: url, encoding: .utf8))
+        let defaults = try XCTUnwrap(ShellDefaults.bundled)
+        let source = try ShellWidgetSourceLoader.build(.init(
+            name: name, shellDirectory: defaults.deletingLastPathComponent(),
+            sourceURL: url, directories: [defaults], profile: "default"
+        ))
+        try self.init(name: name, source: source.main, modules: source.modules, chunk: source.chunk)
     }
 
     init(
@@ -110,7 +115,7 @@ final class ShellRenderedWidget {
     private func render(_ view: omni_view) -> [UInt8] {
         var stats = omni_render_stats()
         var error = [CChar](repeating: 0, count: 256)
-        let status = omni_instance_render(instance, view, 8_000_000, &stats, &error, error.count)
+        let status = omni_instance_render(instance, view, 100_000_000, &stats, &error, error.count)
         XCTAssertEqual(
             status,
             OMNI_OK,

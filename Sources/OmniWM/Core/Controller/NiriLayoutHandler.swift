@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -265,7 +265,12 @@ struct NodeActivationOptions {
             workingFrame: workingFrame,
             singleWindowFrame: layoutFrames.workingFrame,
             borderSafeFillFrame: layoutFrames.borderSafeFillFrame,
-            fullscreenLayoutFrame: layoutFrames.fullscreenLayoutFrame,
+            fullscreenLayoutFrame: controller.niriFullscreenLayoutFrame(
+                layoutFrames.fullscreenLayoutFrame,
+                workingFrame: layoutFrames.workingFrame,
+                monitor: monitor,
+                gap: gaps
+            ),
             viewFrame: monitor.frame,
             scale: scale
         )

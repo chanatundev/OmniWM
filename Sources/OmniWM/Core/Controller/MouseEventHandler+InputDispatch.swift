@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -55,8 +55,10 @@ extension MouseEventHandler {
             resetHoveredEdgesIfNeeded()
             return
         }
-        controller?.mouseWarpHandler.handleMouseWarpMoved(at: location)
-        recordMouseWarpSample()
+        if controller?.pointerEdgeBarrier.ownsCrossings == false {
+            controller?.mouseWarpHandler.handleMouseWarpMoved(at: location)
+            recordMouseWarpSample()
+        }
         handleMouseMovedFromTap(
             at: location,
             modifiersRawValue: modifiersRawValue,
@@ -86,6 +88,9 @@ extension MouseEventHandler {
             )
         }
         if blocked {
+            if controller?.ownedWindowRegistry.contains(point: location, excluding: .parkingEdgeMask) == false {
+                state.parkingEdgePressButton = button
+            }
             return false
         }
         if button == .left {
@@ -104,8 +109,7 @@ extension MouseEventHandler {
             handleInputSuppressionBegan()
             return
         }
-        controller?.mouseWarpHandler.handleMouseWarpMoved(at: location)
-        recordMouseWarpSample()
+        warpDraggedPointer(at: location)
         controller?.workspaceBarManager.handleAutoHideMouseMoved(at: location)
         beginNativeTitleBarDragIfNeeded(button: button)
         if !isCapturedInteraction(button), shouldBlockOwnWindowInput(at: location) {
@@ -116,6 +120,9 @@ extension MouseEventHandler {
     }
 
     func dispatchMouseUp(at location: CGPoint, button: MouseButton = .left) {
+        if state.parkingEdgePressButton == button {
+            state.parkingEdgePressButton = nil
+        }
         guard !isInputSuppressed else {
             handleInputSuppressionBegan()
             return
@@ -198,6 +205,11 @@ extension MouseEventHandler {
         modifiers: CGEventFlags,
         button: MouseButton = .left
     ) -> Bool {
+        if let latched = state.parkingEdgePressButton,
+           latched == button || pressedMouseButtonsProvider() & latched.pressedMask == 0
+        {
+            state.parkingEdgePressButton = nil
+        }
         if shouldBlockOwnWindowInput(at: location) {
             dropPendingTapEvents()
         } else {
@@ -318,7 +330,7 @@ extension MouseEventHandler {
             return .wheelDisabled
         }
         if controller.isOverviewOpen() { return .overview }
-        if shouldBlockOwnWindowInput(at: location) { return .ownWindow }
+        if shouldBlockOwnWindowGestureInput(at: location) { return .ownWindow }
         guard !state.isResizing, !state.isMoving else { return .windowInteraction }
         guard controller.settings.gestures.scrollEnabled else { return .wheelDisabled }
         let requiredModifiers = controller.settings.gestures.scrollModifierKey.cgEventFlag
@@ -363,7 +375,7 @@ extension MouseEventHandler {
             return
         }
         guard shouldProcessGestureFrame(snapshot) else { return }
-        if shouldBlockOwnWindowInput(at: snapshot.location) {
+        if shouldBlockOwnWindowGestureInput(at: snapshot.location) {
             dropPendingTapEvents()
         } else {
             flushQueuedTapEventsBeforeImmediateDispatch()
@@ -402,8 +414,7 @@ extension MouseEventHandler {
             handleInputSuppressionBegan()
             return
         }
-        controller?.mouseWarpHandler.handleMouseWarpMoved(at: location)
-        recordMouseWarpSample()
+        warpDraggedPointer(at: location)
         controller?.workspaceBarManager.handleAutoHideMouseMoved(at: location)
         beginNativeTitleBarDragIfNeeded(button: button)
         if !isCapturedInteraction(button), shouldBlockOwnWindowInput(at: location) {
@@ -411,5 +422,11 @@ extension MouseEventHandler {
             return
         }
         handleMouseDraggedFromTap(at: location, button: button, requirePressedButtonCheck: false)
+    }
+
+    private func warpDraggedPointer(at location: CGPoint) {
+        guard state.parkingEdgePressButton == nil else { return }
+        controller?.mouseWarpHandler.handleMouseWarpMoved(at: location)
+        recordMouseWarpSample()
     }
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -37,6 +37,8 @@ final class WMController {
     let hotkeys = HotkeyCenter()
     private(set) var hotkeyRegistrationFailures: [HotkeyCommand: HotkeyRegistrationFailureReason] = [:]
     private(set) var systemHyperTriggerFailure: SystemHyperTriggerFailure?
+    private(set) var windowSwitcherInputAvailable = false
+    var keyboardModeKind = KeyboardModeKind.normal
     var isHyperTriggerActive: Bool {
         hotkeys.isHyperTriggerActive
     }
@@ -48,7 +50,10 @@ final class WMController {
         didSet {
             guard oldValue != isLockScreenActive else { return }
             workspaceBarManager.setShellLocked(isLockScreenActive)
+            publishPointerEdgeTopology()
             if isLockScreenActive {
+                windowSwitcherControllerStorage?.dismiss()
+                hotkeys.cancelArmedKeyboardMode()
                 layoutRefreshController.suspendForLockScreen()
                 resetWorkspaceBarReveal()
                 mouseEventHandler.handleInputSuppressionBegan()
@@ -61,6 +66,15 @@ final class WMController {
     let axManager = AXManager()
     let traceCaptureCoordinator: RuntimeTraceCaptureCoordinator
     let appInfoCache = AppInfoCache()
+    @ObservationIgnored
+    private(set) lazy var resizeOverlay = ResizeOverlayController(
+        currentFrame: { [weak self] in self?.axManager.lastAppliedFrame(for: $0.windowId) },
+        monitorFrame: { [weak self] in self?.workspaceManager.monitor(for: $0)?.frame },
+        icon: { [weak self] in self?.appInfoCache.info(for: $0.pid)?.icon },
+        requestRelayout: { [weak self] in
+            self?.layoutRefreshController.requestRelayout(reason: .staleLayoutPlan, affectedWorkspaceIds: [$0])
+        }
+    )
     @ObservationIgnored
     let workspaceBarIconResolver: WorkspaceBarIconResolver
     private(set) var workspaceBarIconResolutionRevision: UInt64 = 0
@@ -144,6 +158,13 @@ final class WMController {
     )
     @ObservationIgnored
     private(set) lazy var commandPaletteController: CommandPaletteController = .init(motionPolicy: motionPolicy)
+    @ObservationIgnored var windowSwitcherControllerStorage: WindowSwitcherController?
+    var windowSwitcherController: WindowSwitcherController {
+        if let windowSwitcherControllerStorage { return windowSwitcherControllerStorage }
+        let switcher = WindowSwitcherController(controller: self)
+        windowSwitcherControllerStorage = switcher
+        return switcher
+    }
 
     @ObservationIgnored
     private(set) lazy var sponsorsWindowController: SponsorsWindowController = .init(
@@ -157,6 +178,7 @@ final class WMController {
     private(set) lazy var mouseEventHandler = MouseEventHandler(controller: self)
     @ObservationIgnored
     private(set) lazy var mouseWarpHandler = MouseWarpHandler(controller: self)
+    let pointerEdgeBarrier = PointerEdgeBarrier()
     @ObservationIgnored
     private(set) lazy var axEventHandler = AXEventHandler(controller: self)
     @ObservationIgnored
@@ -202,10 +224,13 @@ final class WMController {
     let ownedWindowRegistry: OwnedWindowRegistry
     @ObservationIgnored
     let columnModeToast: ColumnModeToastController
+    let keyboardModeIndicator: KeyboardModeIndicatorController
     @ObservationIgnored
     var warpMouseCursorPosition: (CGPoint) -> Void = { CGWarpMouseCursorPosition($0) }
     @ObservationIgnored
     var currentMouseLocation: () -> CGPoint = { NSEvent.mouseLocation }
+    @ObservationIgnored
+    var windowDispositionEvaluationForTests: ((WindowToken) -> WindowDecisionEvaluation?)?
     @ObservationIgnored
     weak var ipcApplicationBridge: IPCApplicationBridge?
 
@@ -251,6 +276,7 @@ final class WMController {
         self.windowFocusOperations = windowFocusOperations
         self.ownedWindowRegistry = ownedWindowRegistry
         columnModeToast = ColumnModeToastController(ownedWindowRegistry: ownedWindowRegistry)
+        keyboardModeIndicator = KeyboardModeIndicatorController(ownedWindowRegistry: ownedWindowRegistry)
         workspaceManager = WorkspaceManager(settings: settings)
         focusPolicyEngine = FocusPolicyEngine()
         if self.workspaceBarIconResolver.synchronize(
@@ -377,6 +403,7 @@ extension WMController {
     func setFocusFollowsMouse(_ enabled: Bool) {
         focusFollowsMouseEnabled = enabled
         mouseEventHandler.reconcileMouseMoveSubscription()
+        surfaceReconciler.noteWorldChanged()
         guard !enabled,
               let request = intentLedger.activeManagedRequest,
               request.origin == .focusFollowsMouse
@@ -419,6 +446,7 @@ extension WMController {
     func refreshHotkeyFailureSnapshots() {
         hotkeyRegistrationFailures = hotkeys.registrationFailures
         systemHyperTriggerFailure = hotkeys.systemHyperTriggerFailure
+        windowSwitcherInputAvailable = hotkeys.isWindowSwitcherAvailable
     }
 
     func pruneHiddenWorkspaceBarMonitorIds() {
@@ -473,6 +501,12 @@ extension WMController {
     func syncMouseWarpPolicy(for monitors: [Monitor]? = nil) -> Bool {
         let effectiveMonitors = monitors ?? workspaceManager.monitors
         let shouldEnable = shouldUseMouseWarp(for: effectiveMonitors)
+        if shouldEnable, hasStartedServices, settings.pointer.enabled {
+            pointerEdgeBarrier.start()
+        } else {
+            pointerEdgeBarrier.stop()
+        }
+        publishPointerEdgeTopology()
         mouseEventHandler.reconcileMouseMoveSubscription()
         guard shouldEnable != isMouseWarpPolicyEnabled else {
             return shouldEnable
@@ -488,11 +522,13 @@ extension WMController {
     }
 
     func resetMouseWarpPolicy() {
+        pointerEdgeBarrier.stop()
         mouseWarpHandler.cleanup()
         isMouseWarpPolicyEnabled = false
     }
 
     func cleanupUIOnStop() {
+        windowSwitcherControllerStorage?.dismiss()
         workspaceBarRevealMonitor.stop()
         workspaceBarManager.cleanup()
     }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import ApplicationServices
@@ -138,6 +138,80 @@ final class CommandPaletteControllerTests: XCTestCase {
                 isMenuModeAvailable: false
             )
         )
+    }
+
+    func testCommandShortcutsUsePhysicalNumberRowOnAzerty() {
+        let azertyRow: [Int: (String, CommandPaletteMode)] = [
+            kVK_ANSI_1: ("&", .windows),
+            kVK_ANSI_2: ("é", .menu),
+            kVK_ANSI_3: ("\"", .clipboard),
+            kVK_ANSI_4: ("'", .commands),
+            kVK_ANSI_5: ("(", .applications),
+            kVK_ANSI_6: ("§", .files)
+        ]
+        for (keyCode, (characters, mode)) in azertyRow {
+            XCTAssertEqual(directModeTarget(keyCode: UInt16(keyCode), characters: characters), mode, characters)
+        }
+    }
+
+    func testCommandShortcutsAcceptKeypadDigits() {
+        let keypad: [(Int, CommandPaletteMode)] = [
+            (kVK_ANSI_Keypad1, .windows),
+            (kVK_ANSI_Keypad2, .menu),
+            (kVK_ANSI_Keypad3, .clipboard),
+            (kVK_ANSI_Keypad4, .commands),
+            (kVK_ANSI_Keypad5, .applications),
+            (kVK_ANSI_Keypad6, .files)
+        ]
+        for (keyCode, mode) in keypad {
+            XCTAssertEqual(directModeTarget(keyCode: UInt16(keyCode), characters: "x"), mode)
+        }
+        XCTAssertNil(directModeTarget(keyCode: UInt16(kVK_ANSI_Keypad7), characters: "7"))
+    }
+
+    func testNumberRowWithoutCommandDoesNotSwitchModes() {
+        XCTAssertNil(
+            CommandPalettePresentation.modeNavigationTarget(
+                currentMode: .windows,
+                isMenuModeAvailable: true,
+                keyCode: UInt16(kVK_ANSI_1),
+                relevantModifiers: [],
+                charactersIgnoringModifiers: "&"
+            )
+        )
+    }
+
+    func testLetterKeyEquivalentsFollowTypedLetterAndFallBackToPositionOnNonLatinLayouts() {
+        XCTAssertTrue(KeyEquivalent.matches(
+            "y",
+            ansiKeyCode: kVK_ANSI_Y,
+            keyCode: UInt16(kVK_ANSI_Y),
+            charactersIgnoringModifiers: "y"
+        ))
+        XCTAssertTrue(KeyEquivalent.matches(
+            "y",
+            ansiKeyCode: kVK_ANSI_Y,
+            keyCode: UInt16(kVK_ANSI_Z),
+            charactersIgnoringModifiers: "Y"
+        ))
+        XCTAssertFalse(KeyEquivalent.matches(
+            "y",
+            ansiKeyCode: kVK_ANSI_Y,
+            keyCode: UInt16(kVK_ANSI_Y),
+            charactersIgnoringModifiers: "z"
+        ))
+        XCTAssertTrue(KeyEquivalent.matches(
+            "r",
+            ansiKeyCode: kVK_ANSI_R,
+            keyCode: UInt16(kVK_ANSI_R),
+            charactersIgnoringModifiers: "к"
+        ))
+        XCTAssertFalse(KeyEquivalent.matches(
+            "r",
+            ansiKeyCode: kVK_ANSI_R,
+            keyCode: UInt16(kVK_ANSI_T),
+            charactersIgnoringModifiers: "е"
+        ))
     }
 
     func testModeHintsKeepDirectShortcutsVisible() {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -190,6 +190,7 @@ final class ServiceLifecycleManager {
 
     func handleFrameApplySucceeded(_ result: AXFrameApplyResult) {
         guard let controller else { return }
+        controller.resizeOverlay.frameApplied(windowId: result.windowId)
         controller.axEventHandler.clearTerminalFrameFailure(windowId: result.windowId)
         controller.mouseEventHandler.handleNativeTitleBarDragFrameApplySucceeded(result)
         guard result.writeResult.observedFrame != nil, result.confirmedFrame != nil else { return }

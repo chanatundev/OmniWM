@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -25,7 +25,7 @@ extension NiriLayoutHandler {
             workingFrame: snapshot.niriWorkingFrame,
             singleWindowFrame: snapshot.monitor.workingFrame,
             borderSafeFillFrame: snapshot.monitor.borderSafeFillFrame,
-            fullscreenLayoutFrame: snapshot.monitor.fullscreenLayoutFrame,
+            fullscreenLayoutFrame: snapshot.fullscreenLayoutFrame,
             viewFrame: snapshot.monitor.frame,
             scale: snapshot.monitor.scale
         )

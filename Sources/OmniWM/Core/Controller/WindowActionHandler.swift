@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -15,6 +15,7 @@ final class WindowActionHandler {
     weak var controller: WMController?
     private let floatingWindows: FloatingWindowRaiser
     private let appReveal: AppRevealActions
+    private let unminimizeWindow: (AXWindowRef) -> Bool
 
     @ObservationIgnored
     private var overviewControllerStorage: OverviewController?
@@ -56,9 +57,11 @@ final class WindowActionHandler {
                 return .applicationUnavailable
             }
             return app.unhide() ? .requestReportedSent : .requestReportedNotSent
-        }
+        },
+        unminimizeWindow: @escaping (AXWindowRef) -> Bool = AXWindowService.unminimize
     ) {
         self.controller = controller
+        self.unminimizeWindow = unminimizeWindow
         floatingWindows = FloatingWindowRaiser(
             controller: controller,
             visibleOwnedWindowsProvider: visibleOwnedWindowsProvider,
@@ -304,6 +307,7 @@ final class WindowActionHandler {
         handle: WindowHandle,
         focusOrigin: ManagedFocusOrigin = .keyboardOrProgrammatic
     ) -> Bool {
+        guard restoreMinimizedWindowIfNeeded(handle) else { return false }
         let navigated = navigateToExplicitlySelectedWindow(handle: handle, focusOrigin: focusOrigin)
         if navigated,
            let controller,
@@ -343,5 +347,17 @@ final class WindowActionHandler {
         }
 
         return appInfoMap.values.sorted { $0.appName < $1.appName }
+    }
+}
+
+extension WindowActionHandler {
+    private func restoreMinimizedWindowIfNeeded(_ handle: WindowHandle) -> Bool {
+        guard let controller,
+              let entry = controller.workspaceManager.entry(for: handle),
+              entry.observedState.isMinimized
+        else { return true }
+        guard unminimizeWindow(entry.axRef) else { return false }
+        controller.axEventHandler.updateWindowMinimizedState(false, token: entry.token)
+        return true
     }
 }

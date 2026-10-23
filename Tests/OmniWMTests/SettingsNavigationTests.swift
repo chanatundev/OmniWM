@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 @testable import OmniWM
 import XCTest
@@ -22,6 +22,12 @@ final class SettingsNavigationTests: XCTestCase {
         let spacing = try XCTUnwrap(SettingsSearchIndex.results(for: "Inner Gaps").first { $0.route.tab == "spacing" })
         XCTAssertEqual(spacing.route.section, .layouts)
         XCTAssertEqual(spacing.route.anchor, "Inner Gaps")
+        let edgeNavigation = try XCTUnwrap(SettingsSearchIndex.results(for: "Edge navigation interval")
+            .first { $0.title == String(localized: "Edge navigation interval") })
+        XCTAssertEqual(
+            edgeNavigation.route,
+            SettingsRoute(section: .mouseTrackpad, tab: "mouse", anchor: "Edge navigation interval")
+        )
         XCTAssertTrue(SettingsSearchIndex.results(for: "zqvnomatch").isEmpty)
         XCTAssertTrue(SettingsSearchIndex.results(for: "  ").isEmpty)
     }

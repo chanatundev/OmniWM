@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import SwiftUI
 
@@ -217,11 +217,13 @@ struct AppRulesSidebar: View {
                 .onMove(perform: onMove)
 
                 if rules.count > 1, onMove != nil {
-                    Text("More specific rules win; ties break by order — drag to reorder.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .selectionDisabled()
-                        .listRowSeparator(.hidden)
+                    Text(
+                        "Each setting comes from the most specific matching rule that sets it; ties break by order — drag to reorder."
+                    )
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .selectionDisabled()
+                    .listRowSeparator(.hidden)
                 }
             }
             .listStyle(.inset)
@@ -273,7 +275,9 @@ struct AppRuleSidebarRow: View {
             Text(rule.specificity.formatted())
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(.tertiary)
-                .help("Match specificity \(rule.specificity) — higher specificity wins; ties break by list order")
+                .help(
+                    "Match specificity \(rule.specificity) — for each setting, the most specific matching rule wins; ties break by list order"
+                )
                 .accessibilityLabel("Specificity \(rule.specificity)")
         }
         .padding(.vertical, 2)

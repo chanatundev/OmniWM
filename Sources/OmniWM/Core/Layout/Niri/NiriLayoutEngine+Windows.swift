@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -194,7 +194,8 @@ extension NiriLayoutEngine {
         in workspaceId: WorkspaceDescriptor.ID,
         selectedNodeId: NodeId?,
         focusedToken: WindowToken? = nil,
-        containerSizingStates: [WindowToken: NiriContainerSizingState]? = nil
+        containerSizingStates: [WindowToken: NiriContainerSizingState]? = nil,
+        windowSizingStates: [WindowToken: PersistedNiriWindowState]? = nil
     ) -> Set<WindowToken> {
         assertSanctionedMutation()
         let state = ensureState(for: workspaceId)
@@ -209,13 +210,16 @@ extension NiriLayoutEngine {
         }
 
         for token in tokens where state.nodesByToken[token] == nil {
-            _ = addWindow(
+            let window = addWindow(
                 token: token,
                 to: workspaceId,
                 afterSelection: selectedNodeId,
                 focusedToken: focusedToken,
                 containerSizingState: containerSizingStates?[token]
             )
+            if let windowSizingState = windowSizingStates?[token] {
+                applyPersistedWindowState(windowSizingState, to: window)
+            }
         }
 
         return removedHandles

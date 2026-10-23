@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -80,6 +80,10 @@ enum IPCQuerySelection {
             guard !allowedFields.isEmpty, query.fields.allSatisfy(allowedFields.contains) else {
                 return .invalidArguments
             }
+        }
+
+        if query.sort != nil, query.name != .windows {
+            return .invalidArguments
         }
 
         if let windowSelector = query.selectors.window, supportedSelectors.contains(.window) {

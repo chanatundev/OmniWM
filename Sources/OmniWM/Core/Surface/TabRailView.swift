@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 
@@ -89,7 +89,9 @@ final class TabRailView: NSView {
     }
 
     override func setFrameSize(_ newSize: NSSize) {
+        let sizeChanged = frame.size != newSize
         super.setFrameSize(newSize)
+        guard sizeChanged else { return }
         iconView?.frame = bounds
         updateTrackView(rebuildLayout: true)
         if !suppressAccessibilityGeometryUpdates {

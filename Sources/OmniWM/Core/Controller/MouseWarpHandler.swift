@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -93,6 +93,13 @@ final class MouseWarpHandler: NSObject {
               let lastMonitor = controller.workspaceManager.monitor(byId: lastMonitorId)
         else { return }
         _ = attemptWarp(from: lastMonitor, location: location, margin: margin)
+    }
+
+    func notePointerEdgeCrossing(to target: Monitor.ID) {
+        guard let controller else { return }
+        state.lastMonitorId = target
+        state.lastSampleAt = Date()
+        _ = controller.workspaceManager.setInteractionMonitor(target)
     }
 
     private func attemptWarp(from sourceMonitor: Monitor, location: CGPoint, margin: CGFloat) -> Bool {
@@ -225,6 +232,7 @@ final class MouseWarpHandler: NSObject {
 
     func noteProgrammaticCursorMove(to location: CGPoint) {
         guard let controller else { return }
+        controller.pointerEdgeBarrier.noteProgrammaticMove(to: location)
         guard let monitor = controller.workspaceManager.monitors.first(where: { $0.frame.contains(location) }) else {
             return
         }

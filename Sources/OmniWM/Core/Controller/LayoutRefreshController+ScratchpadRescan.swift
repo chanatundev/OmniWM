@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -104,5 +104,25 @@ extension LayoutRefreshController {
             frame.intersects(monitor.visibleFrame)
                 && monitor.visibleFrame.contains(CGPoint(x: frame.midX, y: frame.midY))
         }
+    }
+}
+
+extension LayoutRefreshController {
+    func discardScratchpadRevealGroupAndReconcile(_ groupId: UInt64) {
+        guard let index = revealGroups.discard(groupId) else { return }
+        reconcileRevealedScratchpadAfterGroupDiscard(index)
+    }
+
+    func reconcileRevealedScratchpadAfterGroupDiscard(_ index: ScratchpadIndex) {
+        guard let controller,
+              controller.workspaceManager.revealedScratchpadIndex() == index,
+              !controller.workspaceManager.scratchpadMembers(in: index).contains(where: {
+                  controller.isManagedWindowDisplayable($0)
+              })
+        else {
+            return
+        }
+        controller.workspaceManager.setRevealedScratchpad(nil)
+        controller.requestWorkspaceBarRefresh()
     }
 }

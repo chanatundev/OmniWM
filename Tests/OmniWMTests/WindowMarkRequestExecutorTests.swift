@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -73,6 +73,27 @@ final class WindowMarkRequestExecutorTests: XCTestCase {
         XCTAssertEqual(controller.windowMarkRegistry.lookup("a-stale"), .unknown)
         XCTAssertEqual(controller.windowMarkRegistry.lookup("b-live"), .found(liveToken))
         XCTAssertEqual(response(executor, .list).result, result.result)
+    }
+
+    func testListEntriesCarryWindowId() throws {
+        let controller = WindowAdmissionTestSupport.controller(prefix: "OmniWMWindowMarkId")
+        let workspaceId = try XCTUnwrap(
+            WindowAdmissionTestSupport.workspace(named: "80", layoutType: .niri, controller: controller)
+        )
+        let token = WindowToken(pid: 80_001, windowId: 80_101)
+        _ = WindowAdmissionTestSupport.track(token, in: workspaceId, controller: controller)
+        XCTAssertEqual(controller.windowMarkRegistry.set("mark-one", for: token), .inserted)
+
+        let executor = IPCWindowMarkRequestExecutor(controller: controller)
+        let result = executor.response(for: .list, id: "list")
+        let data = try IPCWire.makeEncoder().encode(result)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        let payload = try XCTUnwrap(json["result"] as? [String: Any])
+        let marksPayload = try XCTUnwrap(payload["payload"] as? [String: Any])
+        let marks = try XCTUnwrap(marksPayload["marks"] as? [[String: Any]])
+        let entry = try XCTUnwrap(marks.first { ($0["name"] as? String) == "mark-one" })
+        let expectedId = IPCWindowOpaqueID.encode(token: token, sessionToken: "")
+        XCTAssertEqual(entry["id"] as? String, expectedId)
     }
 
     private func response(

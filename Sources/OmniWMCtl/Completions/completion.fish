@@ -43,6 +43,7 @@ end
 #{{queryLines}}
 #{{queryFlagLines}}
 #{{queryFieldLines}}
+#{{querySortLines}}
 #{{commandRootLines}}
 #{{commandNestedLines}}
 #{{commandPathArgumentLines}}
@@ -61,5 +62,6 @@ end
 #{{windowLines}}
 #{{windowMarkActionLines}}
 #{{windowMarkListFlagLines}}
+#{{windowGatherLines}}
 #{{shellActionLines}}
 #{{shellLines}}

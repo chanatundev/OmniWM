@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -125,6 +125,7 @@ struct FocusSessionSnapshot: Equatable {
     var lastFocusedByWorkspace: [WorkspaceDescriptor.ID: WindowToken] = [:]
     var lastTiledFocusedToken: WindowToken?
     var tiledFocusHistory: [WindowToken] = []
+    var windowFocusHistory: [WindowToken] = []
     var focusLease: FocusPolicyLease?
     var suppressedFocusToken: WindowToken?
     var systemModalFocusToken: WindowToken?
@@ -133,6 +134,12 @@ struct FocusSessionSnapshot: Equatable {
 }
 
 extension FocusSessionSnapshot {
+    mutating func recordWindowFocus(_ token: WindowToken) {
+        guard windowFocusHistory.first != token else { return }
+        windowFocusHistory.removeAll { $0 == token }
+        windowFocusHistory.insert(token, at: 0)
+    }
+
     @discardableResult
     mutating func recordTiledFocus(_ token: WindowToken) -> Bool {
         var unchanged = tiledFocusHistory.count <= 32 && tiledFocusHistory.first == token
@@ -214,6 +221,11 @@ extension FocusSessionSnapshot {
         if tiledFocusHistory.count != previousHistoryCount {
             changed = true
         }
+        let previousWindowHistoryCount = windowFocusHistory.count
+        windowFocusHistory.removeAll { $0 == token }
+        if windowFocusHistory.count != previousWindowHistoryCount {
+            changed = true
+        }
 
         if let workspaceId {
             if lastTiledFocusedByWorkspace[workspaceId] == token {
@@ -249,6 +261,12 @@ extension FocusSessionSnapshot {
         }
         for index in tiledFocusHistory.indices where tiledFocusHistory[index] == oldToken {
             tiledFocusHistory[index] = newToken
+            changed = true
+        }
+        if windowFocusHistory.contains(oldToken) {
+            var seen: Set<WindowToken> = []
+            windowFocusHistory = windowFocusHistory.map { $0 == oldToken ? newToken : $0 }
+                .filter { seen.insert($0).inserted }
             changed = true
         }
 

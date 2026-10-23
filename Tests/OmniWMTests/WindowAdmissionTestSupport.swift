@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import ApplicationServices
@@ -39,6 +39,7 @@ enum WindowAdmissionTestSupport {
         )
         let handler = controller.axEventHandler
         handler.lifecycleQueries.query = { [weak handler] in handler?.windowInfoProvider($0) }
+        handler.frameObservations.nativeDragQuery = { [weak handler] in handler?.windowInfoProvider($0) }
         return controller
     }
 

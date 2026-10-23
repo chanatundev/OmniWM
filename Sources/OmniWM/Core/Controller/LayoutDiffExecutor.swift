@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
@@ -24,10 +24,8 @@ final class LayoutDiffExecutor {
         return frameChange
     }
 
-    func execute(_ plan: WorkspaceLayoutPlan) {
-        guard let controller = refreshController.controller,
-              let monitor = resolveMonitor(from: plan.monitor, controller: controller)
-        else { return }
+    func execute(_ plan: WorkspaceLayoutPlan, controller: WMController) {
+        guard let monitor = resolveMonitor(from: plan.monitor, controller: controller) else { return }
         if Self.isFrameOnly(plan.diff) {
             executeFrameOnly(plan.diff, plan: plan, monitor: monitor, controller: controller)
             return

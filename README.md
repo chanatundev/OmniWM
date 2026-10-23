@@ -616,6 +616,7 @@ OmniWM is a free, open-source, Developer ID-signed and Apple-notarized tiling wi
 
 ## Highlights
 
+- Optional [window switcher](website/src/content/docs/features/window-switcher.md) with previews and separate Command-Tab / Option-Tab workspace scopes
 - Ghostty-powered quake/sticky terminal
 - Native macOS window-tab support
 - Local IPC and `omniwmctl` automation
@@ -1085,6 +1086,7 @@ A visual indicator showing your workspaces:
 - Optionally hide the bar on a monitor while that monitor shows a macOS native fullscreen window, and bring it back on exit (`Hide in Native Fullscreen`); reserved tiled layout space is left untouched so windows do not shuffle around the fullscreen session
 - Exclude individual apps or choose alternate app icons across all monitors in Settings
 - When building from `main`, the bar is drawn by Luau widgets in `~/.config/omniwm/shell/` that you can restyle or replace, with the Wayline, Nocturne, Celestial and System styles and twelve colour themes bundled; see [OmniShell](https://omniwm.app/features/luau-shell/)
+- Add **Notifications** from **Bar Widgets** to browse retained macOS notifications. Its Details view includes participants, attachments, action definitions and native metadata, also available to widgets through `ctx.data.notifications`. The feed reads Notification Center's database on changes; native persistence can delay updates by several seconds. The widget shows storage-access errors and links to Full Disk Access settings. Reply and dismiss definitions are metadata; the widget does not execute those native actions.
 - The editable effects library includes native motion presets, Metal lighting and reveal masks. Add **Effects Lab** from **Bar Widgets** to explore them with blur and glass materials; see [Effects library](https://omniwm.app/omnishell/reference/effects-shaders/).
 
 Workspace-bar appearance controls are optional and also support per-monitor overrides:
@@ -1137,7 +1139,7 @@ If you need more features for hiding status bar icons, I recommend [Thaw](https:
 
 - **Workspaces** - Create named workspaces in Settings to organize by project or context (You can use emojis 🥳)
 - **App Rules** - Exclude problematic apps from tiling or assign them to specific workspaces
-- **Mouse** - Hold the configured mouse-move modifier and drag to swap tiled windows. Niri swaps individual windows; add `Shift` to insert into a column. Dwindle swaps whole tiles, including their tab groups. The modifier defaults to `Option` and can be changed or disabled in **Settings → Mouse & Trackpad**. In Overview, dragging a thumbnail needs no modifier and targets a workspace, window position, or Niri column gap
+- **Mouse** - Hold the configured mouse-move modifier and drag tiled windows. **Unreleased:** drop at another tile's center to swap or near one of its edges to insert on that side; in Niri the edges facing neighboring columns open a new column, and Dwindle also inserts between existing splits or at the workspace's outer edges. Dwindle moves whole tiles, including their tab groups. Drops on another display work the same way, between Niri and Dwindle too. The modifier defaults to `Option` and can be changed or disabled in **Settings → Mouse & Trackpad**. In Overview, dragging a thumbnail needs no modifier and targets a workspace, window position, or Niri column gap
 - **Mouse Resize** - Hold the configured right-mouse resize modifier (`Option` by default) and right-drag a tiled window to resize it in either layout
 - **Scroll Gestures (Mouse)** - Hold `Option + Shift + Mouse Scroll Wheel` (default, configurable) to scroll along the active Niri primary axis: left/right in horizontal orientation or up/down in vertical orientation
 - **Trackpad Gestures** - Use 2/3/4-finger gestures (configurable) along the active Niri primary axis; direction can be inverted
@@ -1230,7 +1232,7 @@ initialContainerPrimarySpan = 0.5
 
 ## Building from Source
 
-Follow the [contributor quick start](CONTRIBUTING.md#quick-start) for Xcode requirements, automatic dependency setup, and a separate **OmniWM Dev** app with independent settings. The guide covers rebuilding, switching back to your normal app, and verifying a pull request.
+Follow the [contributor quick start](CONTRIBUTING.md#quick-start) for Xcode requirements, automatic dependency setup with [Lix](https://lix.systems/install/) and the repository's `flake.nix`, and a separate **OmniWM Dev** app with independent settings. The guide covers rebuilding, switching back to your normal app, and verifying a pull request.
 
 ## Community Integrations
 
@@ -1276,6 +1278,6 @@ The similarly named files under `docs/` are compatibility stubs that direct old 
 
 ## License
 
-OmniWM is licensed under the [GNU General Public License v2.0-only](LICENSE). Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM.
+OmniWM is licensed under the [GNU General Public License v2.0-only](LICENSE). Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM.
 
 Every OmniWM source file carries an SPDX license header. The vendored Luau runtime in `Sources/OmniWMLuau` keeps its MIT license (`LICENSE.txt` and `lua_LICENSE.txt`), and app builds ship both texts in `Contents/Resources/Licenses`. The Nocturne and Wayline shell themes use colours from [Noctalia](https://github.com/noctalia-dev/noctalia) and [Wayle](https://github.com/wayle-rs/wayle), both MIT. The Catppuccin, Dracula, Everforest, Gruvbox, Kanagawa, Nord and Rosé Pine shell themes adapt those MIT colour schemes through the same two projects. The bundled fonts Google Sans Flex and Rubik (SIL Open Font License) and Material Symbols Rounded (Apache 2.0) keep their licenses, as does Google's Material Color Utilities (Apache 2.0), vendored in `Sources/OmniWMMaterialColor`. All of these notices are in `Resources/Licenses` and ship there too. Forks and redistributions must retain these notices and the `LICENSE` file, and remain GPL-2.0-only with source available.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import CoreGraphics
@@ -76,7 +76,7 @@ final class ForeignTransientFocusRecoveryTests: XCTestCase {
         )
         XCTAssertEqual(
             fixture.recorder.operations,
-            ["activate:\(target.pid)", "focus:\(target.pid):\(target.windowId)", "raise"]
+            ["focus:\(target.pid):\(target.windowId)", "raise"]
         )
     }
 
@@ -343,7 +343,6 @@ final class ForeignTransientFocusRecoveryTests: XCTestCase {
         XCTAssertEqual(
             fixture.recorder.operations,
             [
-                "activate:\(replacementToken.pid)",
                 "focus:\(replacementToken.pid):\(replacementToken.windowId)",
                 "raise"
             ]

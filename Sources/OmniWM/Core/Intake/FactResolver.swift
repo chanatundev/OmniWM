@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import ApplicationServices
 import Foundation
@@ -220,6 +220,7 @@ final class FactResolver {
             CFRunLoopRun()
         }
         thread.name = "OmniWM-FactResolver"
+        thread.qualityOfService = .userInitiated
         thread.start()
         resolverThread = thread
         return thread

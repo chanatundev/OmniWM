@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -21,6 +21,24 @@ extension WMController {
             guard let self else { return }
             if !eventIntake.enqueue(.hotkeyInvocation(invocation)) {
                 _ = commandHandler.handleHotkeyInvocation(invocation)
+            }
+        }
+        hotkeys.onKeyboardModeChange = { [weak self] kind in
+            self?.keyboardModeDidChange(kind)
+        }
+        hotkeys.isKeyboardModeArmingBlocked = { [weak self] in
+            guard let self else { return true }
+            return secureInputMonitor.isSecureInputActive || isLockScreenActive
+        }
+        hotkeys.onWindowSwitcherAction = { [weak self] action, generation in
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if case .begin = action {
+                    guard settings.windowSwitcher.enabled else { return }
+                    windowSwitcherController.handle(action, generation: generation)
+                } else {
+                    windowSwitcherControllerStorage?.handle(action, generation: generation)
+                }
             }
         }
         settings.onDynamicHotkeysChanged = { [weak self] in
@@ -163,5 +181,6 @@ extension WMController {
         )
         refreshHotkeyFailureSnapshots()
         refreshDiagnosticsIssues()
+        refreshKeyboardModeIndicator()
     }
 }

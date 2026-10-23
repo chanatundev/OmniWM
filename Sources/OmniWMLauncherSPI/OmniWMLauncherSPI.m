@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 #import "OmniWMLauncherSPI.h"
 #import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
@@ -75,6 +75,11 @@
 
 @interface ISImageDescriptor : NSObject
 - (instancetype)initWithSize:(CGSize)size scale:(CGFloat)scale;
+- (void)applyIconAppearanceConfiguration:(id)configuration;
+@end
+
+@interface NSWorkspace (OmniWMIconAppearance)
+- (id)currentIconAppearanceConfiguration;
 @end
 
 @interface OmniWMLauncherAppRecord ()
@@ -441,6 +446,14 @@ CGImageRef _Nullable omniwm_launcher_create_icon(CFURLRef url, CGFloat points, C
                     if (icon && descriptor &&
                         [icon respondsToSelector:@selector(prepareImagesForImageDescriptors:)] &&
                         [icon respondsToSelector:@selector(CGImageForImageDescriptor:)]) {
+                        NSWorkspace *workspace = NSWorkspace.sharedWorkspace;
+                        if ([workspace respondsToSelector:@selector(currentIconAppearanceConfiguration)] &&
+                            [descriptor respondsToSelector:@selector(applyIconAppearanceConfiguration:)]) {
+                            id configuration = [workspace currentIconAppearanceConfiguration];
+                            if (configuration) {
+                                [descriptor applyIconAppearanceConfiguration:configuration];
+                            }
+                        }
                         [icon prepareImagesForImageDescriptors:@[ descriptor ]];
                         CGImageRef image = [icon CGImageForImageDescriptor:descriptor];
                         if (image) {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -26,7 +26,10 @@ final class IPCQueryRouter {
         IPCPingResult()
     }
 
-    func versionResult(executableSHA256: String?) -> IPCVersionResult {
+    nonisolated static func versionResult(
+        appVersion: String?,
+        executableSHA256: String?
+    ) -> IPCVersionResult {
         IPCVersionResult(
             protocolVersion: OmniWMIPCProtocol.version,
             appVersion: appVersion,
@@ -207,6 +210,7 @@ final class IPCQueryRouter {
             workspaceActions: IPCAutomationManifest.workspaceActionDescriptors,
             windowActions: IPCAutomationManifest.windowActionDescriptors,
             windowMarkActions: IPCAutomationManifest.windowMarkActionDescriptors,
+            windowGatherActions: IPCAutomationManifest.windowGatherActionDescriptors,
             shellActions: IPCAutomationManifest.shellActionDescriptors
         )
     }
@@ -228,6 +232,7 @@ final class IPCQueryRouter {
             workspaceActions: IPCAutomationManifest.workspaceActionDescriptors,
             windowActions: IPCAutomationManifest.windowActionDescriptors,
             windowMarkActions: IPCAutomationManifest.windowMarkActionDescriptors,
+            windowGatherActions: IPCAutomationManifest.windowGatherActionDescriptors,
             shellActions: IPCAutomationManifest.shellActionDescriptors,
             subscriptions: IPCAutomationManifest.subscriptionDescriptors
         )

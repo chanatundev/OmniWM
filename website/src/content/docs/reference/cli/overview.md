@@ -121,7 +121,7 @@ Turning **Enable IPC** on starts the server immediately and creates the Unix soc
 
 ## IPC Protocol
 
-**Protocol version:** 20
+**Protocol version:** 22
 
 The client and server versions must match exactly. A mismatched client can still call `version`, but every other remote request returns `protocol_mismatch`; there is no cross-version compatibility path.
 
@@ -175,7 +175,8 @@ omniwmctl completion <zsh|bash|fish|nu>
 **Setup:**
 
 ```bash
-# Zsh — add to ~/.zshrc
+# Zsh — add to ~/.zshrc (skip the compinit line if your framework already runs it)
+autoload -Uz compinit && compinit
 eval "$(omniwmctl completion zsh)"
 
 # Bash — add to ~/.bashrc

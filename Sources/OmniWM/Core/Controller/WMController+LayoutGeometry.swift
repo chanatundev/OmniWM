@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -142,6 +142,16 @@ extension WMController {
 
     func niriWorkingFrame(_ workingFrame: CGRect, gap: CGFloat) -> CGRect {
         settings.niri.edgeGaps ? workingFrame : workingFrame.insetBy(dx: -gap, dy: -gap)
+    }
+
+    func niriFullscreenLayoutFrame(
+        _ fullscreenLayoutFrame: CGRect,
+        workingFrame: CGRect,
+        monitor: Monitor,
+        gap: CGFloat
+    ) -> CGRect {
+        guard settings.gaps.resolved(for: monitor).fullscreenUsesOuterGaps else { return fullscreenLayoutFrame }
+        return niriWorkingFrame(workingFrame, gap: gap).insetBy(dx: gap, dy: gap)
     }
 
     func fullscreenLayoutFrame(for monitor: Monitor) -> CGRect {

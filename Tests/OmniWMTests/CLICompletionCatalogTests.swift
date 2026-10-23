@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 @testable import OmniWMCtl
 import XCTest
@@ -18,6 +18,14 @@ final class CLICompletionCatalogTests: XCTestCase {
             CLICompletionCatalog.commandSlotThreeSuggestionsByFirst["focus"],
             ["left", "right", "up", "down", "previous", "down-or-left", "up-or-right"].sorted()
         )
+    }
+
+    func testWindowGatherOffersItsReachFlagAndValues() {
+        XCTAssertTrue(CLICompletionCatalog.windowActionNames.contains("gather"))
+        XCTAssertEqual(CLICompletionCatalog.windowGatherReachFlag, "--from")
+        XCTAssertEqual(CLICompletionCatalog.windowGatherReaches, ["workspace", "monitor", "all"])
+        XCTAssertTrue(CLICompletionCatalog.valueFlags.contains("--from"))
+        XCTAssertEqual(CLICompletionCatalog.flagValuesByName["--from"], ["workspace", "monitor", "all"])
     }
 
     func testResizePreservesBothLiteralArgumentPositions() {

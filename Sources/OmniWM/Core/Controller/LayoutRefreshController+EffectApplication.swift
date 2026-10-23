@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -157,6 +157,7 @@ extension LayoutRefreshController {
         }
         controller.workspaceManager.quietArrivalTokens.subtract(plan.quietArrivalTokens)
 
+        let plan = controller.resizeOverlay.intercept(plan)
         applyLayoutMutations(plan, controller: controller)
         publishAcceptedLayoutSurfaces(plan, controller: controller)
         if let disposition = plan.dwindleAnimationTargetDisposition {
@@ -167,12 +168,15 @@ extension LayoutRefreshController {
                 plannedSeq: controller.workspaceManager.worldSeq
             )
         }
-        applyAnimationDirectives(
-            plan.animationDirectives,
-            workspaceId: plan.workspaceId,
-            focusSeqAccepted: true,
-            suppressWindowActivation: suppressWindowActivation
-        )
+        if !plan.animationDirectives.isEmpty {
+            applyAnimationDirectives(
+                plan.animationDirectives,
+                workspaceId: plan.workspaceId,
+                focusSeqAccepted: true,
+                suppressWindowActivation: suppressWindowActivation,
+                controller: controller
+            )
+        }
         if !plan.isAnimationTick {
             controller.surfaceReconciler.noteWorldChanged()
         }

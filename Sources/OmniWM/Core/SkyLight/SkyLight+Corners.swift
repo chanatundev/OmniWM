@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -31,7 +31,7 @@ extension SkyLight {
             captureWindowList = surfaces.captureWindowList
         ] cid in
             let windowNumbers = [NSNumber(value: wid)] as CFArray
-            guard let query = windowQueryWindows(cid, windowNumbers, 1)?.takeRetainedValue(),
+            guard let query = windowQueryWindows(cid, windowNumbers, 0)?.takeRetainedValue(),
                   let iterator = windowQueryResultCopyWindows(query)?.takeRetainedValue(),
                   windowIteratorAdvance(iterator),
                   windowIteratorGetWindowID(iterator) == wid

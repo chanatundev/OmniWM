@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -14,6 +14,7 @@ enum SurfaceKind: String, CaseIterable, Hashable, Sendable {
     case nativeFullscreenPlaceholder
     case tabRail
     case columnModeToast
+    case keyboardModeIndicator
     case dragGhost
     case utility
     case quake
@@ -163,8 +164,8 @@ final class SurfaceScene {
     }
 
     func contains(window: NSWindow?) -> Bool {
-        guard let window else { return false }
-        return windowIDByObject[ObjectIdentifier(window)] != nil
+        guard let window, let id = windowIDByObject[ObjectIdentifier(window)] else { return false }
+        return nodesByID[id]?.window === window
     }
 
     func contains(windowNumber: Int) -> Bool {
@@ -199,9 +200,10 @@ final class SurfaceScene {
         return true
     }
 
-    func containsInteractive(point: CGPoint) -> Bool {
+    func containsInteractive(point: CGPoint, excluding kind: SurfaceKind? = nil) -> Bool {
         nodesByID.values.contains { node in
-            guard node.policy.hitTestPolicy != .passthrough,
+            guard node.policy.kind != kind,
+                  node.policy.hitTestPolicy != .passthrough,
                   isVisible(node)
             else {
                 return false
@@ -224,11 +226,12 @@ final class SurfaceScene {
 
     var hasFrontmostSuppressingWindow: Bool {
         guard let app = NSApp else { return false }
-        let frontmostWindows = [app.keyWindow, app.mainWindow].compactMap { $0 }
-        return frontmostWindows.contains { window in
-            guard let node = node(for: window) else { return false }
-            return node.policy.suppressesManagedFocusRecovery && isVisible(node)
+        let frontmostWindows: InlineArray<2, NSWindow?> = [app.keyWindow, app.mainWindow]
+        for index in frontmostWindows.indices {
+            guard let window = frontmostWindows[index], let node = node(for: window) else { continue }
+            if node.policy.suppressesManagedFocusRecovery && isVisible(node) { return true }
         }
+        return false
     }
 
     var hasVisibleSuppressingWindow: Bool {
@@ -336,6 +339,9 @@ final class SurfaceScene {
     private func contains(_ point: CGPoint, in node: SurfaceNode) -> Bool {
         if let regionProvider = node.regionProvider {
             return regionProvider().contains { $0.contains(point) }
+        }
+        if node.policy.kind == .parkingEdgeMask {
+            return resolvedFrame(for: node).map { NSMouseInRect(point, $0, false) } == true
         }
         return resolvedFrame(for: node)?.contains(point) == true
     }

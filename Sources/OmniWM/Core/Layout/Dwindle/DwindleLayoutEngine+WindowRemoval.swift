@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import CoreGraphics
 import Foundation
@@ -14,10 +14,19 @@ extension DwindleLayoutEngine {
               let memberIndex = tile.memberIndex(for: token)
         else { return }
 
-        if let move = interactiveMove, move.workspaceId == workspaceId,
-           move.token == token || move.targetToken == token
-        {
-            interactiveMoveCancel()
+        if let move = interactiveMove, move.workspaceId == workspaceId {
+            if move.token == token || move.targetToken == token {
+                interactiveMoveCancel()
+            } else {
+                switch move.target {
+                case .workspaceEdge,
+                     .splitBoundary:
+                    interactiveMoveCancel()
+                case .tile,
+                     nil:
+                    break
+                }
+            }
         }
 
         if tile.members.count > 1 {

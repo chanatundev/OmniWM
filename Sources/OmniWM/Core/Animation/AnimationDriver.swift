@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import QuartzCore
@@ -32,15 +32,23 @@ final class AnimationDriver {
         semanticOffset: CGFloat,
         at time: TimeInterval = CACurrentMediaTime()
     ) -> CGFloat? {
+        renderOffsets(in: workspaceId, semanticOffset: semanticOffset, at: time).liveOffset
+    }
+
+    func renderOffsets(
+        in workspaceId: WorkspaceDescriptor.ID,
+        semanticOffset: CGFloat,
+        at time: TimeInterval
+    ) -> (liveOffset: CGFloat?, settledVisibilityOffset: CGFloat?) {
         switch motions[workspaceId] {
         case let .gesture(gesture):
-            semanticOffset + CGFloat(gesture.relativeOffset)
+            (semanticOffset + CGFloat(gesture.relativeOffset), nil)
         case let .spring(animation):
-            CGFloat(animation.value(at: time))
+            (CGFloat(animation.value(at: time)), semanticOffset)
         case let .deceleration(animation):
-            CGFloat(animation.value(at: time))
+            (CGFloat(animation.value(at: time)), semanticOffset)
         case nil:
-            nil
+            (nil, nil)
         }
     }
 

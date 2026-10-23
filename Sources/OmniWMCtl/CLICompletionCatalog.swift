@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 import OmniWMIPC
@@ -81,7 +81,15 @@ enum CLICompletionCatalog {
     }
 
     static var windowActionNames: [String] {
-        sortedUnique(IPCAutomationManifest.windowActionDescriptors.map(\.name.rawValue) + ["mark"])
+        sortedUnique(IPCAutomationManifest.windowActionDescriptors.map(\.name.rawValue) + ["mark", "gather"])
+    }
+
+    static var windowGatherReachFlag: String {
+        CLIParser.windowGatherReachFlag
+    }
+
+    static var windowGatherReaches: [String] {
+        IPCWindowGatherReach.allCases.map(\.rawValue)
     }
 
     static var windowMarkActionNames: [String] {
@@ -158,7 +166,9 @@ enum CLICompletionCatalog {
     static var queryFlagsByName: [String: [String]] {
         var map: [String: [String]] = [:]
         for descriptor in IPCAutomationManifest.queryDescriptors {
-            let flags = sortedUnique(selectorFlags(for: descriptor) + (descriptor.fields.isEmpty ? [] : ["--fields"]))
+            let fieldFlags = descriptor.fields.isEmpty ? [] : ["--fields"]
+            let sortFlags = descriptor.name == .windows ? ["--sort"] : []
+            let flags = sortedUnique(selectorFlags(for: descriptor) + fieldFlags + sortFlags)
             map[descriptor.name.rawValue] = flags
         }
         return map
@@ -176,11 +186,15 @@ enum CLICompletionCatalog {
         let selectors = IPCQuerySelectorName.allCases.filter(\.expectsValue).map(\.flag)
         let ruleOptions = IPCAutomationManifest.ruleActionDescriptors.flatMap(\.options)
             .filter { $0.valuePlaceholder != nil }.map(\.flag)
-        return sortedUnique(["--format", "--fields"] + selectors + ruleOptions)
+        return sortedUnique(["--format", "--fields", "--sort", windowGatherReachFlag] + selectors + ruleOptions)
     }
 
     static var flagValuesByName: [String: [String]] {
-        var values = ["--format": CLIOutputFormat.allCases.map(\.rawValue)]
+        var values = [
+            "--format": CLIOutputFormat.allCases.map(\.rawValue),
+            "--sort": IPCQuerySort.allCases.map(\.rawValue),
+            windowGatherReachFlag: windowGatherReaches
+        ]
         for option in IPCAutomationManifest.ruleDefinitionOptionDescriptors {
             guard let placeholder = option.valuePlaceholder, placeholder.contains("|") else { continue }
             values[option.flag] = placeholder.dropFirst().dropLast().split(separator: "|").map(String.init)

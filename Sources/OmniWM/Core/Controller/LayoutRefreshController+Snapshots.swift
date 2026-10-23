@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -126,17 +126,18 @@ extension LayoutRefreshController {
         var excludedTokens: Set<WindowToken> = []
         var windows: [LayoutWindowSnapshot] = []
         windows.reserveCapacity(controller.workspaceManager.windowCount(in: workspaceId))
-        controller.workspaceManager.windowQueries.forEachWindow(in: workspaceId, mode: .tiling) { entry in
-            let isExcluded = controller.workspaceManager.isWindowSuppressedByMacOS(entry)
-            if isExcluded { excludedTokens.insert(entry.token) }
-            windows.append(buildWindowSnapshot(
-                for: entry,
-                isExcluded: isExcluded,
-                resolveConstraints: resolveConstraints,
-                bounds: (monitorSnapshot.workingFrame.size, neighborAxes),
-                controller: controller
-            ))
-        }
+        controller.workspaceManager.windowQueries
+            .forEachWindowForLayoutSnapshot(in: workspaceId, mode: .tiling) { entry in
+                let isExcluded = controller.workspaceManager.isWindowSuppressedByMacOS(entry)
+                if isExcluded { excludedTokens.insert(entry.token) }
+                windows.append(buildWindowSnapshot(
+                    for: entry,
+                    isExcluded: isExcluded,
+                    resolveConstraints: resolveConstraints,
+                    bounds: (monitorSnapshot.workingFrame.size, neighborAxes),
+                    controller: controller
+                ))
+            }
 
         return WorkspaceRefreshInput(
             workspaceId: workspaceId,
@@ -155,6 +156,21 @@ extension LayoutRefreshController {
 }
 
 extension LayoutRefreshController {
+    func destinationConstraints(for token: WindowToken, on monitor: Monitor) -> WindowSizeConstraints {
+        guard let controller, let entry = controller.workspaceManager.entry(for: token) else { return .unconstrained }
+        var constraints = controller.workspaceManager.cachedConstraints(
+            for: token,
+            maxAge: .greatestFiniteMagnitude
+        ) ?? .unconstrained
+        _ = mergeObservedAndRuleConstraints(&constraints, entry: entry, controller: controller)
+        return Self.overflowCappedConstraints(
+            constraints,
+            layoutReason: entry.layoutReason,
+            workArea: buildMonitorSnapshot(for: monitor).workingFrame.size,
+            cappedAxes: monitor.neighborAxes(among: controller.workspaceManager.monitors)
+        )
+    }
+
     private func mergeObservedAndRuleConstraints(
         _ mergedConstraints: inout WindowSizeConstraints,
         entry: borrowing WindowState,

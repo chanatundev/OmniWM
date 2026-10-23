@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Dispatch
 import Foundation
@@ -74,6 +74,8 @@ enum EventIntakeTrace {
         case .mouseScroll: Identity(kind: "mouse-scroll")
         case let .nativeFullscreenTransitionExpired(token, _):
             Identity(kind: "fullscreen-expired", pid: token.pid, windowId: token.windowId)
+        case .pointerEdgeCrossed: Identity(kind: "pointer-edge-cross")
+        case .pointerEdgeOwnershipChanged: Identity(kind: "pointer-edge-owner")
         case .secureInputStateMayHaveChanged: Identity(kind: "secure-input")
         case .systemSleep: Identity(kind: "sleep")
         case .systemWake: Identity(kind: "wake")

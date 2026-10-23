@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import Foundation
 
 extension IPCJSONWriter {
     mutating func fields2(_ value: borrowing IPCWindowQuerySnapshot, _ first: inout Bool) throws {
+        if let fieldValue = value.layoutReason {
+            self.key("layoutReason", &first)
+            try self.value(fieldValue)
+        }
         if let fieldValue = value.manualOverride {
             self.key("manualOverride", &first)
             try self.value(fieldValue)
@@ -25,13 +29,13 @@ extension IPCJSONWriter {
             self.key("title", &first)
             try self.value(fieldValue)
         }
+    }
+
+    mutating func fields3(_ value: borrowing IPCWindowQuerySnapshot, _ first: inout Bool) throws {
         if let fieldValue = value.windowId {
             self.key("windowId", &first)
             try self.value(fieldValue)
         }
-    }
-
-    mutating func fields3(_ value: borrowing IPCWindowQuerySnapshot, _ first: inout Bool) throws {
         if let fieldValue = value.workspace {
             self.key("workspace", &first)
             try self.value(fieldValue)
@@ -69,6 +73,10 @@ extension IPCJSONWriter {
         end(125)
     }
 
+    mutating func value(_ value: borrowing IPCColumnDisplayMode) throws {
+        try self.value(value.rawValue)
+    }
+
     mutating func value(_ value: borrowing IPCColumnViewport) throws {
         try self.value(value.rawValue)
     }
@@ -78,6 +86,8 @@ extension IPCJSONWriter {
         var first = true
         self.key("index", &first)
         try self.value(value.index)
+        self.key("mode", &first)
+        try self.value(value.mode)
         self.key("viewport", &first)
         try self.value(value.viewport)
         end(125)

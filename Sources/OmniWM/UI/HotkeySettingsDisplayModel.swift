@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import SwiftUI
@@ -41,6 +41,28 @@ enum HotkeyCaptureResult {
         }
 
         settings.updateTrigger(for: actionId, newTrigger: newTrigger)
+        return .applied
+    }
+
+    static func captureModeKey(
+        _ trigger: HotkeyTrigger,
+        for actionId: String,
+        settings: SettingsStore
+    ) -> HotkeyCaptureResult {
+        guard let key = trigger.chordBinding, KeyboardModeTable.isSupported(key) else {
+            return .rejected(
+                String(localized: "A mode key is a single key, optionally with Shift. Escape always leaves the mode.")
+            )
+        }
+        if let other = settings.hotkeyBindings.first(where: { $0.id != actionId && $0.modeKey == key }) {
+            return .rejected(
+                String(localized: "This key is already the mode key for \(other.command.localizedDisplayName).")
+            )
+        }
+        if settings.hotkeyBindings.contains(where: { $0.binding.chordBinding?.conflicts(with: key) == true }) {
+            return .rejected(String(localized: "A shortcut already uses this key"))
+        }
+        settings.updateModeKey(for: actionId, newModeKey: key)
         return .applied
     }
 

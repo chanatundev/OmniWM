@@ -22,6 +22,8 @@ _omniwmctl() {
           case "$query_name" in
             #{{queryFieldsByName}}
           esac
+        elif [[ "$prev" == "--sort" ]]; then
+          suggestions="#{{querySortValues}}"
         else
           case "$query_name" in
             #{{queryFlagsByName}}
@@ -118,6 +120,12 @@ _omniwmctl() {
         suggestions="#{{windowMarkActionNames}}"
       elif (( CURRENT == 5 )) && [[ "${words[3]}" == "mark" && "${words[4]}" == "list" ]]; then
         suggestions="#{{windowMarkListFlags}}"
+      elif [[ "${words[3]}" == "gather" ]]; then
+        if [[ "${words[CURRENT-1]}" == "#{{windowGatherReachFlag}}" ]]; then
+          suggestions="#{{windowGatherReaches}}"
+        elif [[ " ${words[*]} " != *" #{{windowGatherReachFlag}} "* ]]; then
+          suggestions="#{{windowGatherReachFlag}}"
+        fi
       fi
       ;;
     shell)
@@ -133,4 +141,8 @@ _omniwmctl() {
   [[ -n "$suggestions" ]] && compadd -- ${=suggestions}
 }
 
-_omniwmctl "$@"
+if [ "$funcstack[1]" = "_omniwmctl" ]; then
+    _omniwmctl "$@"
+else
+    compdef _omniwmctl omniwmctl
+fi

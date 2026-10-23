@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Copyright (C) 2026 BarutSRB — https://github.com/OmniNull/OmniWM
+// Copyright (C) 2026 OmniNull — https://github.com/OmniNull/OmniWM
 
 import AppKit
 import Foundation
@@ -77,12 +77,10 @@ extension AXEventHandler {
 
         let app = NSRunningApplication(processIdentifier: token.pid)
         let bundleId = resolveBundleId(token.pid) ?? app?.bundleIdentifier
-        let appFullscreen = AXWindowService.isFullscreen(axRef)
         let matchingWindowInfo = WMController.exactWindowServerInfo(windowInfo, for: token)
         let evaluation = controller.evaluateWindowDisposition(
             axRef: axRef,
             pid: token.pid,
-            appFullscreen: appFullscreen,
             windowInfo: matchingWindowInfo,
             windowServerLookupAttempted: true
         )
